@@ -4,6 +4,7 @@
 builds:
   - env:
       - CGO_ENABLED=0
+      - GOOS=1.21
     targets:
       - linux_amd64
       - linux_arm64
