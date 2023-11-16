@@ -52,19 +52,19 @@ func getDYNLIBFullPaths() ([]string, error) {
 	var libjvmPaths []string
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 
+		if err != nil {
+			if os.IsPermission(err) {
+				return filepath.SkipDir
+			}
+			return err
+		}
+
 		if info.IsDir() {
 			for _, dir := range IGNORE_DIRS {
 				if info.Name() == dir {
 					return filepath.SkipDir
 				}
 			}
-		}
-
-		if err != nil {
-			if os.IsPermission(err) {
-				return filepath.SkipDir
-			}
-			return err
 		}
 
 		if !info.IsDir() && info.Name() == libjvmFilename {
