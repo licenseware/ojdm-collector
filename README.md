@@ -1,4 +1,4 @@
-# Java Finder
+# OJDM Collector
 
 Find Java installed versions and the software asociated with installed Java (cross-platform).
 
@@ -6,13 +6,13 @@ Download the binary from Releases or clone the repo and run `make build` (you wi
 
 ```shell
 
-$ javafinder --help
+$ ojdm-collector --help
 
 JavaFinder - Utility to find JVMs/JDKs report their versions and related running processes
 
 Usage:
-    $ javafinder
-    $ javafinder -csv=/path/to/csvreport.csv
+    $ ojdm-collector
+    $ ojdm-collector -csv=/path/to/csvreport.csv
 
   -csv string
         Path to csv report. (default "report.csv")
@@ -21,7 +21,7 @@ Usage:
 *If you provide a custom csv path make sure path exists.
 
 
-JavaFinder sample output:
+OJDM Collector sample output:
 
 ```json
 {
