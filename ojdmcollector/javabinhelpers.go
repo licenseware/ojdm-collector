@@ -96,20 +96,11 @@ func getBaseDYNLIBPaths(libjvmPaths []string) map[string]string {
 		osSep := string(os.PathSeparator)
 		dirSlice := strings.Split(dir, osSep)
 
-		switch runtime.GOOS {
-		case "darwin":
+		if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 			dirBaseSlice := dirSlice[:3]
 			baseDirPath := filepath.Join(dirBaseSlice...)
-			baseMaplibjvmPaths[osSep+baseDirPath] = path
-		case "linux":
-			dirBaseSlice := dirSlice[:len(dirSlice)-3]
-			baseDirPath := filepath.Join(dirBaseSlice...)
-			baseMaplibjvmPaths[osSep+baseDirPath] = path
-		case "windows":
-			dirBaseSlice := dirSlice[:len(dirSlice)-3]
-			baseDirPath := filepath.Join(dirBaseSlice...)
-			baseMaplibjvmPaths[osSep+baseDirPath] = path
-		default:
+			baseMaplibjvmPaths[baseDirPath] = path
+		} else {
 			dirBaseSlice := dirSlice[:len(dirSlice)-3]
 			baseDirPath := filepath.Join(dirBaseSlice...)
 			baseMaplibjvmPaths[osSep+baseDirPath] = path
