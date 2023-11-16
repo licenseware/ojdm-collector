@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 )
 
@@ -29,57 +30,61 @@ func getDYNLIBFileName() string {
 	}
 }
 
-func getOsSearchRootPath() string {
+func getOsAppsInstalledRootPaths() []string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "/Applications"
+		return []string{"/Applications"}
 	case "linux":
-		return "/"
+		return []string{"/"}
 	case "windows":
-		return "C:\\Program Files"
+		return []string{"C:\\Program Files", "C:\\Program Files (x86)"}
 	default:
-		return "/"
+		return []string{"/"}
 	}
 }
 
 func getDYNLIBFullPaths() ([]string, error) {
 
 	libjvmFilename := getDYNLIBFileName()
-	rootPath := getOsSearchRootPath()
+	rootPaths := getOsAppsInstalledRootPaths()
 
 	fmt.Printf("Gathering all %s binary filepaths...\n", libjvmFilename)
 
 	var libjvmPaths []string
-	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+	for _, rootPath := range rootPaths {
 
-		if err != nil {
-			if os.IsPermission(err) {
-				return filepath.SkipDir
+		err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+
+			if err != nil {
+				if os.IsPermission(err) {
+					return filepath.SkipDir
+				}
+				return err
 			}
-			return err
-		}
 
-		if runtime.GOOS == "linux" {
-			if info.IsDir() {
-				for _, dir := range IGNORE_LINUX_DIRS {
-					if info.Name() == dir {
-						return filepath.SkipDir
+			if runtime.GOOS == "linux" {
+				if info.IsDir() {
+					for _, dir := range IGNORE_LINUX_DIRS {
+						if info.Name() == dir {
+							return filepath.SkipDir
+						}
 					}
 				}
 			}
+
+			if !info.IsDir() && info.Name() == libjvmFilename {
+				fmt.Printf("Found %s in path %s\n", libjvmFilename, path)
+				libjvmPaths = append(libjvmPaths, path)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			fmt.Println("Encountered error", err)
+			return libjvmPaths, err
 		}
 
-		if !info.IsDir() && info.Name() == libjvmFilename {
-			fmt.Printf("Found %s in path %s\n", libjvmFilename, path)
-			libjvmPaths = append(libjvmPaths, path)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		fmt.Println("Encountered error", err)
-		return libjvmPaths, err
 	}
 
 	fmt.Printf("Finished gathering all %s binary paths!\n", libjvmFilename)
@@ -122,6 +127,8 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 
 	fmt.Println("Gather related java binaries...")
 
+	javaBins := []string{"java", "javac", "java.exe", "javac.exe"}
+
 	javaMappedPaths := map[string]JavaInfoRunningProcs{}
 	for jvmlibRootPath, jvmlibBinPath := range baseJVMSOPaths {
 
@@ -134,7 +141,7 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 				return err
 			}
 
-			if !info.IsDir() && (info.Name() == "java" || info.Name() == "javac") {
+			if !info.IsDir() && slices.Contains(javaBins, info.Name()) {
 
 				javaInfoRunningProcs, ok := javaMappedPaths[jvmlibRootPath]
 
@@ -158,12 +165,12 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 
 				}
 
-				if info.Name() == "java" {
+				if info.Name() == "java" || info.Name() == "java.exe" {
 					fmt.Println("Found java in path ", path)
 					javaBinPath = path
 				}
 
-				if info.Name() == "javac" {
+				if info.Name() == "javac" || info.Name() == "javac.exe" {
 					fmt.Println("Found javac in path ", path)
 					javaCBinPath = path
 					isJDK = true
@@ -177,7 +184,6 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 					IsJDK:         isJDK,
 					BaseDir:       jvmlibRootPath,
 				}
-
 			}
 
 			return nil
