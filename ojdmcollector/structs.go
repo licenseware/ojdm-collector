@@ -1,4 +1,4 @@
-package javafinder
+package ojdmcollector
 
 type JavaInfoRunningProcs struct {
 	HostName           string

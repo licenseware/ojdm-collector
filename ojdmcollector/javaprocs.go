@@ -1,4 +1,4 @@
-package javafinder
+package ojdmcollector
 
 import (
 	"fmt"

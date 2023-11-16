@@ -1,4 +1,4 @@
-package javafinder
+package ojdmcollector
 
 func GetFullJavaInfo() []JavaInfoRunningProcs {
 	javaBinInfo := getJavaBinInfo()

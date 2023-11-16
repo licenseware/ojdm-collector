@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"javafinder/javafinder"
+	ojdmc "ojdmcollector/ojdmcollector"
 )
 
 func pprint(any interface{}) {
@@ -29,11 +29,11 @@ func main() {
 
 	flag.Parse()
 
-	javaInfoRunningProcs := javafinder.GetFullJavaInfo()
+	javaInfoRunningProcs := ojdmc.GetFullJavaInfo()
 
 	fmt.Println("Java Info with Running Processes:")
 	pprint(javaInfoRunningProcs)
 
-	javafinder.CreateCSVReport(*csvReportPath, javaInfoRunningProcs)
+	ojdmc.CreateCSVReport(*csvReportPath, javaInfoRunningProcs)
 
 }
