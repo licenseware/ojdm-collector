@@ -8,7 +8,7 @@ Download the binary from Releases or clone the repo and run `make build` (you wi
 
 $ ojdm-collector --help
 
-JavaFinder - Utility to find JVMs/JDKs report their versions and related running processes
+OJDMCollector - Utility to find JVMs/JDKs report their versions and related running processes
 
 Usage:
     $ ojdm-collector

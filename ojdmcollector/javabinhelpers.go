@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var IGNORE_DIRS []string = []string{
+var IGNORE_LINUX_DIRS []string = []string{
 	"boot", "cdrom", "dev", "etc", "lost+found", "media",
 	"mnt", "proc", "root", "run", "sbin", "srv", "sys",
 	"tmp", "var",
@@ -59,10 +59,12 @@ func getDYNLIBFullPaths() ([]string, error) {
 			return err
 		}
 
-		if info.IsDir() {
-			for _, dir := range IGNORE_DIRS {
-				if info.Name() == dir {
-					return filepath.SkipDir
+		if runtime.GOOS == "linux" {
+			if info.IsDir() {
+				for _, dir := range IGNORE_LINUX_DIRS {
+					if info.Name() == dir {
+						return filepath.SkipDir
+					}
 				}
 			}
 		}

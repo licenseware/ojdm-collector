@@ -18,11 +18,11 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Println()
-		fmt.Println("JavaFinder - Utility to find JVMs/JDKs report their versions and related running processes")
+		fmt.Println("OJDMCollector - Utility to find JVMs/JDKs report their versions and related running processes")
 		fmt.Println()
 		fmt.Println("Usage:")
-		fmt.Println("     $ javafinder")
-		fmt.Println("     $ javafinder -csv=/path/to/csvreport.csv")
+		fmt.Println("     $ ojdm-collector")
+		fmt.Println("     $ ojdm-collector -csv=/path/to/csvreport.csv")
 		fmt.Println()
 		flag.PrintDefaults()
 	}
