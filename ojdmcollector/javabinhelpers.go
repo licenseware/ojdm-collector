@@ -32,11 +32,11 @@ func getDYNLIBFileName() string {
 func getOsSearchRootPath() string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "/"
+		return "/Applications"
 	case "linux":
 		return "/"
 	case "windows":
-		return "C:\\"
+		return "C:\\Program Files"
 	default:
 		return "/"
 	}
