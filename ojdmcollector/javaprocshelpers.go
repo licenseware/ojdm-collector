@@ -25,7 +25,7 @@ func getExeNamesOfJavaProgramsOnWindows(javaBinInfo []JavaInfoRunningProcs) []st
 				return err
 			}
 
-			if !info.IsDir() && strings.HasSuffix(info.Name(), ".exe") {
+			if !info.IsDir() && strings.HasSuffix(info.Name(), ".exe") && info.Name() != "fsnotifier.exe" {
 				javaExeNames = append(javaExeNames, info.Name())
 			}
 

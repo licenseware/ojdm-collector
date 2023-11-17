@@ -233,7 +233,7 @@ func getJavaFullVersionSettings(javaBinPath string) (string, error) {
 }
 
 func findRegexInText(regex, text string) string {
-	re := regexp.MustCompile(regexp.QuoteMeta(regex))
+	re := regexp.MustCompile(regex)
 	match := re.FindStringSubmatch(text)
 	if len(match) > 1 {
 		return match[1]
