@@ -89,7 +89,7 @@ func getJavaRunningProcsCommands(javaBinInfo []JavaInfoRunningProcs) []string {
 }
 
 func subStringExistsInText(regex, text string) bool {
-	re := regexp.MustCompile(regex)
+	re := regexp.MustCompile(regexp.QuoteMeta(regex))
 	match := re.FindStringSubmatch(text)
 	return len(match) > 0
 }
