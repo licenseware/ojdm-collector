@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"slices"
 	"strings"
 )
 
@@ -116,6 +115,18 @@ func getBaseDYNLIBPaths(libjvmPaths []string) map[string]string {
 
 }
 
+func isJavaBinary(procName string) bool {
+
+	javaBins := []string{"java", "javac", "java.exe", "javac.exe"}
+
+	for _, jname := range javaBins {
+		if jname == procName {
+			return true
+		}
+	}
+	return false
+}
+
 func getJavaBinPaths() []JavaInfoRunningProcs {
 
 	libjvmPaths, err := getDYNLIBFullPaths()
@@ -126,8 +137,6 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 	baseJVMSOPaths := getBaseDYNLIBPaths(libjvmPaths)
 
 	fmt.Println("Gather related java binaries...")
-
-	javaBins := []string{"java", "javac", "java.exe", "javac.exe"}
 
 	javaMappedPaths := map[string]JavaInfoRunningProcs{}
 	for jvmlibRootPath, jvmlibBinPath := range baseJVMSOPaths {
@@ -141,7 +150,7 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 				return err
 			}
 
-			if !info.IsDir() && slices.Contains(javaBins, info.Name()) {
+			if !info.IsDir() && isJavaBinary(info.Name()) {
 
 				javaInfoRunningProcs, ok := javaMappedPaths[jvmlibRootPath]
 
