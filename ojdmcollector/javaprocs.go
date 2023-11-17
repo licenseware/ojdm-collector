@@ -6,7 +6,7 @@ import (
 
 func getJavaProcInfo(javaBinInfo []JavaInfoRunningProcs) []JavaInfoRunningProcs {
 
-	procCommands := getJavaRunningProcsCommands()
+	procCommands := getJavaRunningProcsCommands(javaBinInfo)
 
 	javaBinProcs := []JavaInfoRunningProcs{}
 	for _, procCmd := range procCommands {
