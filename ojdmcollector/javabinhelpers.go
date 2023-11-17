@@ -103,6 +103,9 @@ func getBaseDYNLIBPaths(libjvmPaths []string) map[string]string {
 		if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 			dirBaseSlice := dirSlice[:3]
 			baseDirPath := filepath.Join(dirBaseSlice...)
+			if runtime.GOOS == "windows" {
+				baseDirPath = strings.Replace(baseDirPath, "C:Program", "C:\\Program", 1)
+			}
 			baseMaplibjvmPaths[baseDirPath] = path
 		} else {
 			dirBaseSlice := dirSlice[:len(dirSlice)-3]
