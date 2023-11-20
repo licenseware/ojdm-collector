@@ -2,6 +2,7 @@ package ojdmcollector
 
 import (
 	"fmt"
+	"strings"
 )
 
 func getJavaProcInfo(javaBinInfo []JavaInfoRunningProcs) []JavaInfoRunningProcs {
@@ -36,6 +37,7 @@ func getJavaProcInfo(javaBinInfo []JavaInfoRunningProcs) []JavaInfoRunningProcs 
 				JavaVMVendor:       jinfo.JavaVMVendor,
 				JavaVMVersion:      jinfo.JavaVMVersion,
 				CommandLine:        procCmd,
+				ProcessPath:        strings.Split(procCmd, " ")[0],
 				ProcessRunning:     true,
 			}
 

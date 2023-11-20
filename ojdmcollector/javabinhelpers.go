@@ -13,7 +13,7 @@ import (
 var IGNORE_LINUX_DIRS []string = []string{
 	"boot", "cdrom", "dev", "etc", "lost+found", "media",
 	"mnt", "proc", "root", "run", "sbin", "srv", "sys",
-	"tmp", "var",
+	"tmp", "var", "Trash",
 }
 
 func getDYNLIBFileName() string {
@@ -64,7 +64,7 @@ func getDYNLIBFullPaths() ([]string, error) {
 			if runtime.GOOS == "linux" {
 				if info.IsDir() {
 					for _, dir := range IGNORE_LINUX_DIRS {
-						if info.Name() == dir {
+						if strings.Contains(info.Name(), dir) {
 							return filepath.SkipDir
 						}
 					}
@@ -189,7 +189,7 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 				}
 
 				javaMappedPaths[jvmlibRootPath] = JavaInfoRunningProcs{
-					AppDirName:    filepath.Base(jvmlibRootPath),
+					AppDirName:    filepath.Base(jvmlibBinPath),
 					DynLibBinPath: jvmlibBinPath,
 					JavaBinPath:   javaBinPath,
 					JavaCBinPath:  javaCBinPath,

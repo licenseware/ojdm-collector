@@ -17,6 +17,7 @@ type JavaInfoRunningProcs struct {
 	JavaVMName         string
 	JavaVMVendor       string
 	JavaVMVersion      string
-	CommandLine        string
 	ProcessRunning     bool
+	ProcessPath        string
+	CommandLine        string
 }
