@@ -2,7 +2,6 @@ package ojdmcollector
 
 import (
 	"fmt"
-	"runtime"
 )
 
 func getJavaProcInfo(javaBinInfo []JavaInfoRunningProcs) []JavaInfoRunningProcs {
@@ -13,14 +12,8 @@ func getJavaProcInfo(javaBinInfo []JavaInfoRunningProcs) []JavaInfoRunningProcs 
 	for _, procCmd := range procCommands {
 		for _, jinfo := range javaBinInfo {
 
-			if runtime.GOOS == "windows" {
-				if !subStringExistsInText(jinfo.BaseDir, procCmd) {
-					continue
-				}
-			} else {
-				if !subStringExistsInText(jinfo.JavaBinPath, procCmd) {
-					continue
-				}
+			if !subStringExistsInText(jinfo.BaseDir, procCmd) {
+				continue
 			}
 
 			fmt.Println("Found running process ", jinfo.AppDirName)

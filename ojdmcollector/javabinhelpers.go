@@ -220,15 +220,22 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 
 func getJavaFullVersionSettings(javaBinPath string) (string, error) {
 
-	cmd := exec.Command(javaBinPath, "-XshowSettings:all", "-version")
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Printf("Failed to execute command: %v\n", err)
-		return "", err
+	cmdSettingsAllVersion := exec.Command(javaBinPath, "-XshowSettings:all", "-version")
+	fullOutput, err := cmdSettingsAllVersion.CombinedOutput()
+	if err == nil {
+		return string(fullOutput), nil
 	}
 
-	return string(output), nil
+	if strings.Contains(string(fullOutput), "Unrecognized option:") {
+		cmdVersion := exec.Command(javaBinPath, "-version")
+		partialOutput, err := cmdVersion.CombinedOutput()
+		if err == nil {
+			return javaBinPath + "\n" + string(partialOutput), nil
+		}
+	}
+
+	fmt.Printf("Failed to retrieve java settings info: %v\n", err)
+	return "", err
 
 }
 
@@ -236,7 +243,7 @@ func findRegexInText(regex, text string) string {
 	re := regexp.MustCompile(regex)
 	match := re.FindStringSubmatch(text)
 	if len(match) > 1 {
-		return match[1]
+		return strings.TrimSpace(match[1])
 	}
 	return ""
 }
@@ -246,12 +253,39 @@ func extractInfoFromFullVersionSettings(versionSettings string) JavaInfoRunningP
 	javaHome := findRegexInText(`java.home\s=\s(.*)`, versionSettings)
 	javaRuntimeName := findRegexInText(`java.runtime.name\s=\s(.*)`, versionSettings)
 	javaRuntimeVersion := findRegexInText(`java.runtime.version\s=\s(.*)`, versionSettings)
-	javaVendor := findRegexInText(`java.vendor\s=\s(.*)`, versionSettings)
 	javaVersion := findRegexInText(`java.version\s=\s(.*)`, versionSettings)
+
 	javaVersionDate := findRegexInText(`java.version.date\s=\s(.*)`, versionSettings)
+
 	javaVMName := findRegexInText(`java.vm.name\s=\s(.*)`, versionSettings)
+
+	javaVendor := findRegexInText(`java.vendor\s=\s(.*)`, versionSettings)
 	javaVMVendor := findRegexInText(`java.vm.vendor\s=\s(.*)`, versionSettings)
 	javaVMVersion := findRegexInText(`java.vm.version\s=\s(.*)`, versionSettings)
+
+	if javaHome == "" {
+		javaHome = findRegexInText(`(.*)/bin/java`, versionSettings)
+	}
+
+	if javaRuntimeName == "" {
+		javaRuntimeName = findRegexInText(`(.*\sRuntime\sEnvironment).*?`, versionSettings)
+	}
+
+	if javaRuntimeVersion == "" {
+		javaRuntimeVersion = findRegexInText(`.*Runtime\sEnvironment\s\(build (.*)\)`, versionSettings)
+	}
+
+	if javaVersion == "" {
+		javaVersion = findRegexInText(`.*\sversion\s"(.*)".*`, versionSettings)
+	}
+
+	if javaVersionDate == "" {
+		javaVersionDate = findRegexInText(`.*version.*".*"\s(.*)`, versionSettings)
+	}
+
+	if javaVMName == "" {
+		javaVMName = findRegexInText(`(.*Server VM).*build`, versionSettings)
+	}
 
 	versionInfo := JavaInfoRunningProcs{
 		JavaHome:           javaHome,
