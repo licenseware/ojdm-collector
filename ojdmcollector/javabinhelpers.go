@@ -189,7 +189,7 @@ func getJavaBinPaths() []JavaInfoRunningProcs {
 				}
 
 				javaMappedPaths[jvmlibRootPath] = JavaInfoRunningProcs{
-					AppDirName:    filepath.Base(jvmlibBinPath),
+					AppDirName:    filepath.Base(jvmlibRootPath),
 					DynLibBinPath: jvmlibBinPath,
 					JavaBinPath:   javaBinPath,
 					JavaCBinPath:  javaCBinPath,

@@ -37,8 +37,9 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs) {
 		"JavaVMName",
 		"JavaVMVendor",
 		"JavaVMVersion",
-		"CommandLine",
+		"ProcessPath",
 		"ProcessRunning",
+		"CommandLine",
 	}
 
 	writer.Write(header)
@@ -62,8 +63,9 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs) {
 			value.JavaVMName,
 			value.JavaVMVendor,
 			value.JavaVMVersion,
-			value.CommandLine,
+			value.ProcessPath,
 			strconv.FormatBool(value.ProcessRunning),
+			value.CommandLine,
 		}
 
 		err := writer.Write(stringData)
