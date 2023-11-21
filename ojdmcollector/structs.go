@@ -2,12 +2,10 @@ package ojdmcollector
 
 type JavaInfoRunningProcs struct {
 	HostName           string
-	AppDirName         string
 	DynLibBinPath      string
 	JavaBinPath        string
 	JavaCBinPath       string
 	IsJDK              bool
-	BaseDir            string
 	JavaHome           string
 	JavaRuntimeName    string
 	JavaRuntimeVersion string

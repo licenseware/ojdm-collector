@@ -22,12 +22,10 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs) {
 
 	header := []string{
 		"HostName",
-		"AppDirName",
 		"DynLibBinPath",
 		"JavaBinPath",
 		"JavaCBinPath",
 		"IsJDK",
-		"BaseDir",
 		"JavaHome",
 		"JavaRuntimeName",
 		"JavaRuntimeVersion",
@@ -48,12 +46,10 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs) {
 
 		stringData := []string{
 			value.HostName,
-			value.AppDirName,
 			value.DynLibBinPath,
 			value.JavaBinPath,
 			value.JavaCBinPath,
 			strconv.FormatBool(value.IsJDK),
-			value.BaseDir,
 			value.JavaHome,
 			value.JavaRuntimeName,
 			value.JavaRuntimeVersion,

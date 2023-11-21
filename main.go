@@ -14,6 +14,8 @@ func pprint(any interface{}) {
 
 func main() {
 
+	fmt.Println("Licenseware OJDM Collector - Gather all java info in one place")
+
 	csvReportPath := flag.String("csv", "report.csv", "Path to csv report.")
 
 	flag.Usage = func() {
