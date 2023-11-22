@@ -28,7 +28,7 @@ func getJavaSharedLibPaths() []string {
 	var javaFiles []string
 	for _, searchPath := range searchPaths {
 
-		err := filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
+		filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
 
 			if err != nil {
 				if os.IsPermission(err) {
@@ -47,11 +47,6 @@ func getJavaSharedLibPaths() []string {
 
 			return nil
 		})
-
-		if err != nil {
-			fmt.Println("Encountered error", err)
-			return javaFiles
-		}
 
 	}
 

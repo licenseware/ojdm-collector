@@ -110,6 +110,10 @@ Equivalent JDowser Output:
 
 
 
+[oracle@wcp12cr2 oracle]$ find /oracle -type f -name libjvm.so
+/oracle/fmw/ohs/oracle_common/jdk/jre/lib/amd64/server/libjvm.so
+/oracle/db/ohome/jdk/jre/lib/amd64/server/libjvm.so
+
 
 
 Output from Oracle VM:
