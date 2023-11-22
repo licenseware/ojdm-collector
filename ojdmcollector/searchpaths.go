@@ -38,7 +38,8 @@ func getSearchPaths() []string {
 		return paths
 
 	case "windows":
-		winPaths := []string{"C:\\Program Files", "C:\\Program Files (x86)"}
+		appDataDir := os.Getenv("LocalAppData")
+		winPaths := []string{"C:\\Program Files", "C:\\Program Files (x86)", appDataDir}
 		paths = append(paths, winPaths...)
 		return paths
 
