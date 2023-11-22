@@ -1,5 +1,7 @@
 # OJDM Collector
 
+First version
+
 Find Java installed versions and the software asociated with installed Java (cross-platform).
 
 Download the binary from Releases or clone the repo and run `make build` (you will find the binary in the `dist` folder).
