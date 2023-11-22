@@ -198,6 +198,38 @@ func fillRunningProcInfo(javaBinPath, procDir, cmdLine string) (JavaInfoRunningP
 
 }
 
+func getProcInfo(javaBinPath, javaHomePath string, runningProcs []ProcessInfo) JavaInfoRunningProcs {
+
+	exePaths := []string{}
+	pinfo := JavaInfoRunningProcs{}
+	for _, rProc := range runningProcs {
+
+		if runtime.GOOS == "windows" {
+
+			if len(exePaths) == 0 {
+				exePaths = getWinExePaths(javaHomePath)
+			}
+
+			pinfowinfound, winerr := fillRunningProcInfoOnWindows(exePaths, rProc.ProcDir, rProc.CommandLine)
+			if winerr == nil {
+				pinfo = pinfowinfound
+				break
+			}
+
+		} else {
+
+			pinfofound, err := fillRunningProcInfo(javaBinPath, rProc.ProcDir, rProc.CommandLine)
+			if err == nil {
+				pinfo = pinfofound
+				break
+			}
+
+		}
+	}
+
+	return pinfo
+}
+
 func GetFullJavaInfo() []JavaInfoRunningProcs {
 
 	hostName, _ := os.Hostname()
@@ -227,32 +259,7 @@ func GetFullJavaInfo() []JavaInfoRunningProcs {
 			}
 		}
 
-		exePaths := []string{}
-		pinfo := JavaInfoRunningProcs{}
-		for _, rProc := range runningProcs {
-
-			if runtime.GOOS == "windows" {
-
-				if len(exePaths) == 0 {
-					exePaths = getWinExePaths(vinfo.JavaHome)
-				}
-
-				pinfowinfound, winerr := fillRunningProcInfoOnWindows(exePaths, rProc.ProcDir, rProc.CommandLine)
-				if winerr == nil {
-					pinfo = pinfowinfound
-					break
-				}
-
-			} else {
-
-				pinfofound, err := fillRunningProcInfo(javaBinPath, rProc.ProcDir, rProc.CommandLine)
-				if err == nil {
-					pinfo = pinfofound
-					break
-				}
-
-			}
-		}
+		pinfo := getProcInfo(javaBinPath, vinfo.JavaHome, runningProcs)
 
 		jinfo := JavaInfoRunningProcs{
 			HostName:      hostName,
