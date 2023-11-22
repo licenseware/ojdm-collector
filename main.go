@@ -8,7 +8,7 @@ import (
 
 func main() {
 
-	fmt.Println("Licenseware OJDM Collector - Gather all java info in one place")
+	fmt.Println("\n\nLicenseware OJDM Collector - Gather all java info in one place\n\n")
 
 	csvReportPath := flag.String("csv", "report.csv", "Path to csv report.")
 

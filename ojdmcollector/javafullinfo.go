@@ -147,9 +147,10 @@ func extractInfoFromFullVersionSettings(versionSettings string) JavaInfoRunningP
 
 }
 
-func getWinExePaths(procDir string) []string {
+func getWinExePaths(javaHomePath string) []string {
 
-	baseAppPath := filepath.Join(strings.Split(procDir, "bin\\jvm.dll")...)
+	jhomeSplit := strings.Split(javaHomePath, "\\")
+	baseAppPath := filepath.Join(jhomeSplit[:len(jhomeSplit)-1]...)
 
 	exePaths := []string{}
 	filepath.Walk(baseAppPath, func(path string, info os.FileInfo, err error) error {
@@ -165,29 +166,31 @@ func getWinExePaths(procDir string) []string {
 	return exePaths
 }
 
-func fillRunningProcInfo(javaBinPath, procDir, cmdLine string) (JavaInfoRunningProcs, error) {
+func fillRunningProcInfoOnWindows(exePaths []string, procDir, cmdLine string) (JavaInfoRunningProcs, error) {
 
 	pinfo := JavaInfoRunningProcs{}
 
-	if runtime.GOOS == "windows" {
-		exePaths := getWinExePaths(procDir)
-
-		for _, exePath := range exePaths {
-			if exePath == procDir {
-				pinfo.ProcessRunning = true
-				pinfo.ProcessPath = procDir
-				pinfo.CommandLine = cmdLine
-				return pinfo, nil
-			}
-		}
-
-	} else {
-		if javaBinPath == procDir {
+	for _, exePath := range exePaths {
+		if exePath == procDir {
 			pinfo.ProcessRunning = true
 			pinfo.ProcessPath = procDir
 			pinfo.CommandLine = cmdLine
 			return pinfo, nil
 		}
+	}
+
+	return pinfo, fmt.Errorf("no running process")
+}
+
+func fillRunningProcInfo(javaBinPath, procDir, cmdLine string) (JavaInfoRunningProcs, error) {
+
+	pinfo := JavaInfoRunningProcs{}
+
+	if javaBinPath == procDir {
+		pinfo.ProcessRunning = true
+		pinfo.ProcessPath = procDir
+		pinfo.CommandLine = cmdLine
+		return pinfo, nil
 	}
 
 	return pinfo, fmt.Errorf("no running process")
@@ -223,12 +226,30 @@ func GetFullJavaInfo() []JavaInfoRunningProcs {
 			}
 		}
 
+		exePaths := []string{}
 		pinfo := JavaInfoRunningProcs{}
 		for _, rProc := range runningProcs {
-			pinfofound, err := fillRunningProcInfo(javaBinPath, rProc.ProcDir, rProc.CommandLine)
-			if err == nil {
-				pinfo = pinfofound
-				break
+
+			if runtime.GOOS == "windows" {
+
+				if len(exePaths) == 0 {
+					exePaths = getWinExePaths(vinfo.JavaHome)
+				}
+
+				pinfowinfound, winerr := fillRunningProcInfoOnWindows(exePaths, rProc.ProcDir, rProc.CommandLine)
+				if winerr == nil {
+					pinfo = pinfowinfound
+					break
+				}
+
+			} else {
+
+				pinfofound, err := fillRunningProcInfo(javaBinPath, rProc.ProcDir, rProc.CommandLine)
+				if err == nil {
+					pinfo = pinfofound
+					break
+				}
+
 			}
 		}
 
