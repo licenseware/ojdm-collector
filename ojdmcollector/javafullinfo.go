@@ -150,11 +150,12 @@ func extractInfoFromFullVersionSettings(versionSettings string) JavaInfoRunningP
 func getWinExePaths(javaHomePath string) []string {
 
 	jhomeSplit := strings.Split(javaHomePath, "\\")
-	baseAppPath := filepath.Join(jhomeSplit[:len(jhomeSplit)-1]...)
+	baseAppPath := "C:\\" + filepath.Join(jhomeSplit[:len(jhomeSplit)-1]...)[2:]
 
 	exePaths := []string{}
 	filepath.Walk(baseAppPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			fmt.Println("Skipping dir because ", err)
 			return filepath.SkipDir
 		}
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".exe") && info.Name() != "fsnotifier.exe" {
