@@ -43,26 +43,13 @@ func getJavaBasePath(jpath string) string {
 
 }
 
-func upOneDir(path string) string {
-
-	splitedPath := strings.Split(path, string(os.PathSeparator))
-	splitedPath = splitedPath[:len(splitedPath)-1]
-	upPath := filepath.Join(splitedPath...)
-
-	if runtime.GOOS != "windows" {
-		return filepath.Join(string(os.PathSeparator), upPath)
-	}
-
-	return upPath
-}
-
 func getJavaPath(jbasePath, javaFileName string) string {
 	javaPath := filepath.Join(jbasePath, "bin", javaFileName)
 	if fileExists(javaPath) {
 		return javaPath
 	}
 	// NOTE: try up one dir join with bin
-	jbasePath = upOneDir(jbasePath)
+	jbasePath = upDir(jbasePath, 1)
 	javaPath = filepath.Join(jbasePath, "bin", javaFileName)
 	if fileExists(javaPath) {
 		return javaPath
@@ -164,7 +151,7 @@ func GetFullJavaInfo() []JavaInfoRunningProcs {
 	javaSharedLibPaths := getJavaSharedLibPaths()
 	runningProcs := getRunningProcCommands()
 
-	fmt.Println(runningProcs)
+	Pprint(runningProcs)
 
 	jInfoProcs := []JavaInfoRunningProcs{}
 	for _, jpath := range javaSharedLibPaths {
@@ -180,6 +167,18 @@ func GetFullJavaInfo() []JavaInfoRunningProcs {
 			javaBinSettingsOutput := getJavaFullVersionSettings(javaBinPath)
 			if javaBinSettingsOutput != "" {
 				vinfo = extractInfoFromFullVersionSettings(javaBinSettingsOutput)
+			}
+		}
+
+		procRunning := false
+		procPath := ""
+		cmdLine := ""
+		for _, rProc := range runningProcs {
+			if javaBinPath == rProc.ProcDir {
+				procRunning = true
+				procPath = rProc.ProcDir
+				cmdLine = rProc.CommandLine
+				break
 			}
 		}
 
@@ -200,10 +199,9 @@ func GetFullJavaInfo() []JavaInfoRunningProcs {
 			JavaVMVendor:       vinfo.JavaVMVendor,
 			JavaVMVersion:      vinfo.JavaVMVersion,
 
-			// TODO
-			ProcessRunning: false,
-			ProcessPath:    "TODO",
-			// CommandLine:    strings.Join(runningProcs, "\n\n"),
+			ProcessRunning: procRunning,
+			ProcessPath:    procPath,
+			CommandLine:    cmdLine,
 		}
 
 		jInfoProcs = append(jInfoProcs, jinfo)

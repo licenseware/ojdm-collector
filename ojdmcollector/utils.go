@@ -1,8 +1,11 @@
 package ojdmcollector
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/shirou/gopsutil/process"
@@ -24,9 +27,9 @@ func fileExists(fp string) bool {
 	return false
 }
 
-func getRunningProcCommands() []string {
+func getRunningProcCommands() []ProcessInfo {
 
-	runningProcs := []string{}
+	runningProcs := []ProcessInfo{}
 
 	processes, procerr := process.Processes()
 	if procerr != nil {
@@ -45,17 +48,43 @@ func getRunningProcCommands() []string {
 		}
 
 		cmdline, cmderr := p.Cmdline()
-		if cmderr != nil {
+		if cmderr != nil || len(cmdline) == 0 {
 			continue
 		}
 
-		procCmd := "CommandLine: " + cmdline + " ProcName: " + name
+		procDir, pdirErr := p.Exe()
+		if pdirErr != nil {
+			continue
+		}
 
-		fmt.Println(procCmd)
+		procCmd := ProcessInfo{
+			Name:        name,
+			ProcDir:     procDir,
+			CommandLine: cmdline,
+		}
 
 		runningProcs = append(runningProcs, procCmd)
+
 	}
 
 	return runningProcs
 
+}
+
+func upDir(path string, n int) string {
+
+	splitedPath := strings.Split(path, string(os.PathSeparator))
+	splitedPath = splitedPath[:len(splitedPath)-n]
+	upPath := filepath.Join(splitedPath...)
+
+	if runtime.GOOS != "windows" {
+		return filepath.Join(string(os.PathSeparator), upPath)
+	}
+
+	return upPath
+}
+
+func Pprint(any interface{}) {
+	empJSON, _ := json.MarshalIndent(any, "", "  ")
+	fmt.Printf("\n%s\n", string(empJSON))
 }

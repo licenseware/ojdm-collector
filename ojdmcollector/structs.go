@@ -19,3 +19,9 @@ type JavaInfoRunningProcs struct {
 	ProcessPath        string
 	CommandLine        string
 }
+
+type ProcessInfo struct {
+	Name        string
+	ProcDir     string
+	CommandLine string
+}

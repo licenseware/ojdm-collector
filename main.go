@@ -1,16 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	ojdmc "ojdmcollector/ojdmcollector"
 )
-
-func pprint(any interface{}) {
-	empJSON, _ := json.MarshalIndent(any, "", "  ")
-	fmt.Printf("\n%s\n", string(empJSON))
-}
 
 func main() {
 
@@ -33,8 +27,8 @@ func main() {
 
 	javaInfoRunningProcs := ojdmc.GetFullJavaInfo()
 
-	fmt.Println("Java Info with Running Processes:")
-	pprint(javaInfoRunningProcs)
+	fmt.Println("\nJava Info with Running Processes:")
+	ojdmc.Pprint(javaInfoRunningProcs)
 
 	ojdmc.CreateCSVReport(*csvReportPath, javaInfoRunningProcs)
 
