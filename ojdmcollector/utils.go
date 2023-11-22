@@ -11,15 +11,6 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-func sliceContains(str string, strSlice []string) bool {
-	for _, name := range strSlice {
-		if strings.EqualFold(str, name) {
-			return true
-		}
-	}
-	return false
-}
-
 func fileExists(fp string) bool {
 	if _, err := os.Stat(fp); err == nil {
 		return true

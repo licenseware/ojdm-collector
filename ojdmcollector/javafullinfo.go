@@ -45,7 +45,11 @@ func getJavaBasePath(jpath string) string {
 }
 
 func getJavaPath(jbasePath, javaFileName string) string {
-	javaPath := filepath.Join(jbasePath, "bin", javaFileName)
+	javaPath := filepath.Join(jbasePath, javaFileName)
+	if fileExists(javaPath) {
+		return javaPath
+	}
+	javaPath = filepath.Join(jbasePath, "bin", javaFileName)
 	if fileExists(javaPath) {
 		return javaPath
 	}
