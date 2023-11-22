@@ -26,7 +26,12 @@ func getJavaCBinFileName() string {
 
 func getJavaBasePath(jpath string) string {
 
+	if runtime.GOOS == "windows" {
+		return filepath.Join(strings.Split(jpath, "server\\jvm.dll")...)
+	}
+
 	jSplitedPath := strings.Split(jpath, string(os.PathSeparator))
+
 	libLastIdx := 0
 	for dix, dir := range jSplitedPath {
 		if dir == "lib" {
@@ -35,11 +40,7 @@ func getJavaBasePath(jpath string) string {
 	}
 	jbasePath := filepath.Join(jSplitedPath[:libLastIdx]...)
 
-	if runtime.GOOS != "windows" {
-		return filepath.Join(string(os.PathSeparator), jbasePath)
-	}
-
-	return jbasePath
+	return filepath.Join(string(os.PathSeparator), jbasePath)
 
 }
 
