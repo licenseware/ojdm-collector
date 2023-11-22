@@ -230,17 +230,14 @@ func getProcInfo(javaBinPath, javaHomePath string, runningProcs []ProcessInfo) J
 	return pinfo
 }
 
-func GetFullJavaInfo() []JavaInfoRunningProcs {
+func GetFullJavaInfo(searchPaths []string) []JavaInfoRunningProcs {
 
 	hostName, _ := os.Hostname()
 	javaBinFileName := getJavaBinFileName()
 	javaCBinFileName := getJavaCBinFileName()
 
-	javaSharedLibPaths := getJavaSharedLibPaths()
+	javaSharedLibPaths := getJavaSharedLibPaths(searchPaths)
 	runningProcs := getRunningProcCommands()
-
-	fmt.Println("\nAll running processes")
-	Pprint(runningProcs)
 
 	jInfoProcs := []JavaInfoRunningProcs{}
 	for _, jpath := range javaSharedLibPaths {

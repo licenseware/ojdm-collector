@@ -4,13 +4,15 @@ import (
 	"flag"
 	"fmt"
 	ojdmc "ojdmcollector/ojdmcollector"
+	"strings"
 )
 
 func main() {
 
 	fmt.Print("\n\nLicenseware OJDM Collector - Gather all java info in one place\n\n")
 
-	csvReportPath := flag.String("csv", "report.csv", "Path to csv report.")
+	csvReportPath := flag.String("csv", "report.csv", "Optional: Path to csv report.")
+	searchPaths := flag.String("paths", "", "Optional: List of paths separated by comma where to search for java info.")
 
 	flag.Usage = func() {
 		fmt.Println()
@@ -19,13 +21,24 @@ func main() {
 		fmt.Println("Usage:")
 		fmt.Println("     $ ojdm-collector")
 		fmt.Println("     $ ojdm-collector -csv=/path/to/csvreport.csv")
+		fmt.Println("     $ ojdm-collector -paths=/home,/oracle,/opt")
+		fmt.Println("     $ ojdm-collector -paths=/home,/usr,/opt -csv=/home/alin/Downloads/ubuntu_report.csv")
 		fmt.Println()
 		flag.PrintDefaults()
 	}
 
 	flag.Parse()
 
-	javaInfoRunningProcs := ojdmc.GetFullJavaInfo()
+	spaths := strings.Split(*searchPaths, ",")
+	trimSpaths := []string{}
+	for _, path := range spaths {
+		path = strings.TrimSpace(path)
+		if path != "" {
+			trimSpaths = append(trimSpaths, path)
+		}
+	}
+
+	javaInfoRunningProcs := ojdmc.GetFullJavaInfo(trimSpaths)
 
 	fmt.Println("\nJava Info with Running Processes:")
 	ojdmc.Pprint(javaInfoRunningProcs)

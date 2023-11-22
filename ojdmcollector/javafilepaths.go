@@ -20,10 +20,15 @@ func getJavaSharedLibFileName() string {
 	}
 }
 
-func getJavaSharedLibPaths() []string {
+func getJavaSharedLibPaths(searchPaths []string) []string {
 
 	javaSharedLibFilename := getJavaSharedLibFileName()
-	searchPaths := getSearchPaths()
+
+	if len(searchPaths) == 0 {
+		searchPaths = getSearchPaths()
+	} else {
+		fmt.Println("Java Search Paths: ", searchPaths)
+	}
 
 	var javaFiles []string
 	for _, searchPath := range searchPaths {
