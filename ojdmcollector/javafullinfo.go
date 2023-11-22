@@ -147,6 +147,53 @@ func extractInfoFromFullVersionSettings(versionSettings string) JavaInfoRunningP
 
 }
 
+func getWinExePaths(procDir string) []string {
+
+	baseAppPath := filepath.Join(strings.Split(procDir, "bin\\jvm.dll")...)
+
+	exePaths := []string{}
+	filepath.Walk(baseAppPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return filepath.SkipDir
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".exe") && info.Name() != "fsnotifier.exe" {
+			exePaths = append(exePaths, path)
+		}
+		return nil
+	})
+
+	return exePaths
+}
+
+func fillRunningProcInfo(javaBinPath, procDir, cmdLine string) (JavaInfoRunningProcs, error) {
+
+	pinfo := JavaInfoRunningProcs{}
+
+	if runtime.GOOS == "windows" {
+		exePaths := getWinExePaths(procDir)
+
+		for _, exePath := range exePaths {
+			if exePath == procDir {
+				pinfo.ProcessRunning = true
+				pinfo.ProcessPath = procDir
+				pinfo.CommandLine = cmdLine
+				return pinfo, nil
+			}
+		}
+
+	} else {
+		if javaBinPath == procDir {
+			pinfo.ProcessRunning = true
+			pinfo.ProcessPath = procDir
+			pinfo.CommandLine = cmdLine
+			return pinfo, nil
+		}
+	}
+
+	return pinfo, fmt.Errorf("no running process")
+
+}
+
 func GetFullJavaInfo() []JavaInfoRunningProcs {
 
 	hostName, _ := os.Hostname()
@@ -156,6 +203,7 @@ func GetFullJavaInfo() []JavaInfoRunningProcs {
 	javaSharedLibPaths := getJavaSharedLibPaths()
 	runningProcs := getRunningProcCommands()
 
+	fmt.Println("\nAll running processes")
 	Pprint(runningProcs)
 
 	jInfoProcs := []JavaInfoRunningProcs{}
@@ -175,14 +223,11 @@ func GetFullJavaInfo() []JavaInfoRunningProcs {
 			}
 		}
 
-		procRunning := false
-		procPath := ""
-		cmdLine := ""
+		pinfo := JavaInfoRunningProcs{}
 		for _, rProc := range runningProcs {
-			if javaBinPath == rProc.ProcDir {
-				procRunning = true
-				procPath = rProc.ProcDir
-				cmdLine = rProc.CommandLine
+			pinfofound, err := fillRunningProcInfo(javaBinPath, rProc.ProcDir, rProc.CommandLine)
+			if err == nil {
+				pinfo = pinfofound
 				break
 			}
 		}
@@ -204,9 +249,9 @@ func GetFullJavaInfo() []JavaInfoRunningProcs {
 			JavaVMVendor:       vinfo.JavaVMVendor,
 			JavaVMVersion:      vinfo.JavaVMVersion,
 
-			ProcessRunning: procRunning,
-			ProcessPath:    procPath,
-			CommandLine:    cmdLine,
+			ProcessRunning: pinfo.ProcessRunning,
+			ProcessPath:    pinfo.ProcessPath,
+			CommandLine:    pinfo.CommandLine,
 		}
 
 		jInfoProcs = append(jInfoProcs, jinfo)
