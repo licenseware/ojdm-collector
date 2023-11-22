@@ -32,6 +32,7 @@ func getSearchPaths() []string {
 			"/usr/share",
 			"/opt",
 			"/snap",
+			"/oracle",
 			localSharePath,
 		}
 		paths = append(paths, linuxPaths...)
