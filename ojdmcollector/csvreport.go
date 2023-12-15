@@ -38,6 +38,9 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs) {
 		"ProcessPath",
 		"ProcessRunning",
 		"CommandLine",
+		"HostProcessors",
+		"HostCores",
+		"HostCpuModel",
 	}
 
 	writer.Write(header)

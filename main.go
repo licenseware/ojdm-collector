@@ -38,10 +38,10 @@ func main() {
 		}
 	}
 
-	javaInfoRunningProcs := ojdmc.GetFullJavaInfo(trimSpaths)
+	javaInfoRunningProcs := ojdmc.CollectJavaInfo(trimSpaths)
 
 	fmt.Println("\nJava Info with Running Processes:")
-	ojdmc.Pprint(javaInfoRunningProcs)
+	// ojdmc.Println(javaInfoRunningProcs)
 
 	ojdmc.CreateCSVReport(*csvReportPath, javaInfoRunningProcs)
 
