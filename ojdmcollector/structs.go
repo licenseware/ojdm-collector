@@ -20,4 +20,5 @@ type JavaInfoRunningProcs struct {
 	CommandLine        string
 	HostProcessors     int
 	HostCores          int
+	JpsJinfoPresent    bool
 }

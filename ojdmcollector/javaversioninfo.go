@@ -9,19 +9,6 @@ import (
 	"strings"
 )
 
-type JavaVersionInfo struct {
-	JavaHome           string
-	JavaRuntimeName    string
-	JavaRuntimeVersion string
-	JavaVersion        string
-	JavaVersionDate    string
-	JavaVMName         string
-	JavaVendor         string
-	JavaVMVendor       string
-	JavaVMVersion      string
-	JpsJinfoPresent    bool
-}
-
 func getJavaBinaryPath(javaDllPath string) string {
 	// Assuming javaDllPath is the path to the jvm.dll or equivalent file
 	dir := filepath.Dir(javaDllPath)
@@ -66,9 +53,9 @@ func checkToolExists(javaBinPath, toolName string) bool {
 	return false
 }
 
-func parseJavaVersionOutput(output string) JavaVersionInfo {
-	return JavaVersionInfo{
-		JavaHome:           findRegexInText(`java.home\s=\s(.*)`, output),
+func parseJavaVersionOutput(output string) JavaInfoRunningProcs {
+	return JavaInfoRunningProcs{
+		JavaHome:           normalizePath(findRegexInText(`java.home\s=\s(.*)`, output)),
 		JavaRuntimeName:    findRegexInText(`java.runtime.name\s=\s(.*)`, output),
 		JavaRuntimeVersion: findRegexInText(`java.runtime.version\s=\s(.*)`, output),
 		JavaVersion:        findRegexInText(`java.version\s=\s(.*)`, output),
@@ -80,8 +67,8 @@ func parseJavaVersionOutput(output string) JavaVersionInfo {
 	}
 }
 
-func GetJavaVersionInfos(javaDllPaths []string) []JavaVersionInfo {
-	var versionInfos []JavaVersionInfo
+func GetJavaVersionInfos(javaDllPaths []string) []JavaInfoRunningProcs {
+	var versionInfos []JavaInfoRunningProcs
 	for _, dllPath := range javaDllPaths {
 		javaBinPath := getJavaBinaryPath(dllPath)
 		output, err := executeJavaBinary(javaBinPath)
@@ -92,6 +79,14 @@ func GetJavaVersionInfos(javaDllPaths []string) []JavaVersionInfo {
 		if checkToolExists(javaBinPath, "jps") && checkToolExists(javaBinPath, "jinfo") {
 			info.JpsJinfoPresent = true
 		}
+		info.JavaBinPath = javaBinPath
+		if checkToolExists(javaBinPath, "javac") {
+			info.JavaCBinPath = normalizePath(filepath.Join(filepath.Dir(javaBinPath), "javac"))
+			info.IsJDK = true
+		} else {
+			info.IsJDK = false
+		}
+		info.HostName = getHostName()
 		versionInfos = append(versionInfos, info)
 	}
 	return versionInfos
