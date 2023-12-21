@@ -1,81 +1,39 @@
 package ojdmcollector
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
-	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
-
-	"github.com/shirou/gopsutil/process"
 )
 
-func fileExists(fp string) bool {
-	if _, err := os.Stat(fp); err == nil {
-		return true
+func normalizePath(path string) string {
+	// Specific handling for Windows drive letter
+	if runtime.GOOS == "windows" {
+		driveLetterRe := regexp.MustCompile(`([a-zA-Z])\\:\\`)
+		path = driveLetterRe.ReplaceAllString(path, `$1:\`)
 	}
-	return false
+
+	// Normalize slashes
+	re := regexp.MustCompile(`[/\\]+`)
+	normalizedPath := re.ReplaceAllString(path, `/`)
+
+	return normalizedPath
 }
 
-func getRunningProcCommands() []ProcessInfo {
-
-	runningProcs := []ProcessInfo{}
-
-	processes, procerr := process.Processes()
-	if procerr != nil {
-		return runningProcs
+func getHostName() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return ""
 	}
-
-	for _, p := range processes {
-		procRunning, runerr := p.IsRunning()
-		if runerr != nil || !procRunning {
-			continue
-		}
-
-		name, err := p.Name()
-		if err != nil {
-			continue
-		}
-
-		cmdline, cmderr := p.Cmdline()
-		if cmderr != nil || len(cmdline) == 0 {
-			continue
-		}
-
-		procDir, pdirErr := p.Exe()
-		if pdirErr != nil {
-			continue
-		}
-
-		procCmd := ProcessInfo{
-			Name:        name,
-			ProcDir:     procDir,
-			CommandLine: cmdline,
-		}
-
-		runningProcs = append(runningProcs, procCmd)
-
-	}
-
-	return runningProcs
-
+	return hostname
 }
 
-func upDir(path string, n int) string {
-
-	splitedPath := strings.Split(path, string(os.PathSeparator))
-	splitedPath = splitedPath[:len(splitedPath)-n]
-	upPath := filepath.Join(splitedPath...)
-
-	if runtime.GOOS != "windows" {
-		return filepath.Join(string(os.PathSeparator), upPath)
+func findRegexInText(regex, text string) string {
+	re := regexp.MustCompile(regex)
+	match := re.FindStringSubmatch(text)
+	if len(match) > 1 {
+		return strings.TrimSpace(match[1])
 	}
-
-	return upPath
-}
-
-func Pprint(any interface{}) {
-	empJSON, _ := json.MarshalIndent(any, "", "  ")
-	fmt.Printf("\n%s\n", string(empJSON))
+	return ""
 }

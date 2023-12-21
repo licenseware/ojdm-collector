@@ -2,288 +2,77 @@ package ojdmcollector
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"runtime"
-	"strings"
+	"sort"
 )
 
-func getJavaBinFileName() string {
-	if runtime.GOOS == "windows" {
-		return "java.exe"
-	}
-	return "java"
-}
+func CollectJavaInfo(searchPaths []string) []JavaInfoRunningProcs {
 
-func getJavaCBinFileName() string {
-	if runtime.GOOS == "windows" {
-		return "javac.exe"
-	}
-	return "javac"
-}
+	var javaInfos []JavaInfoRunningProcs
+	var versionInfos []JavaInfoRunningProcs
+	javaLibPaths := getJavaSharedLibPaths(nil) // Assuming this function is defined in javasearch.go
 
-func getJavaBasePath(jpath string) string {
-
-	if runtime.GOOS == "windows" {
-		return filepath.Join(strings.Split(jpath, "server\\jvm.dll")...)
-	}
-
-	jSplitedPath := strings.Split(jpath, string(os.PathSeparator))
-
-	libLastIdx := 0
-	for dix, dir := range jSplitedPath {
-		if dir == "lib" {
-			libLastIdx = dix
-		}
-	}
-	jbasePath := filepath.Join(jSplitedPath[:libLastIdx]...)
-
-	return filepath.Join(string(os.PathSeparator), jbasePath)
-
-}
-
-func getJavaPath(jbasePath, javaFileName string) string {
-	javaPath := filepath.Join(jbasePath, javaFileName)
-	if fileExists(javaPath) {
-		return javaPath
-	}
-	javaPath = filepath.Join(jbasePath, "bin", javaFileName)
-	if fileExists(javaPath) {
-		return javaPath
-	}
-	// NOTE: try up one dir join with bin
-	jbasePath = upDir(jbasePath, 1)
-	javaPath = filepath.Join(jbasePath, "bin", javaFileName)
-	if fileExists(javaPath) {
-		return javaPath
-	}
-	return ""
-}
-
-func getJavaFullVersionSettings(javaBinPath string) string {
-
-	cmdSettingsAllVersion := exec.Command(javaBinPath, "-XshowSettings:all", "-version")
-	fullOutput, err := cmdSettingsAllVersion.CombinedOutput()
-	if err == nil {
-		return string(fullOutput)
-	}
-
-	if strings.Contains(string(fullOutput), "Unrecognized option:") {
-		cmdVersion := exec.Command(javaBinPath, "-version")
-		partialOutput, err := cmdVersion.CombinedOutput()
-		if err == nil {
-			return javaBinPath + "\n" + string(partialOutput)
-		}
-	}
-
-	fmt.Printf("Failed to retrieve java settings info: %v\n", err)
-	return ""
-
-}
-
-func findRegexInText(regex, text string) string {
-	re := regexp.MustCompile(regex)
-	match := re.FindStringSubmatch(text)
-	if len(match) > 1 {
-		return strings.TrimSpace(match[1])
-	}
-	return ""
-}
-
-func extractInfoFromFullVersionSettings(versionSettings string) JavaInfoRunningProcs {
-
-	javaHome := findRegexInText(`java.home\s=\s(.*)`, versionSettings)
-	javaRuntimeName := findRegexInText(`java.runtime.name\s=\s(.*)`, versionSettings)
-	javaRuntimeVersion := findRegexInText(`java.runtime.version\s=\s(.*)`, versionSettings)
-	javaVersion := findRegexInText(`java.version\s=\s(.*)`, versionSettings)
-
-	javaVersionDate := findRegexInText(`java.version.date\s=\s(.*)`, versionSettings)
-
-	javaVMName := findRegexInText(`java.vm.name\s=\s(.*)`, versionSettings)
-
-	javaVendor := findRegexInText(`java.vendor\s=\s(.*)`, versionSettings)
-	javaVMVendor := findRegexInText(`java.vm.vendor\s=\s(.*)`, versionSettings)
-	javaVMVersion := findRegexInText(`java.vm.version\s=\s(.*)`, versionSettings)
-
-	if javaHome == "" {
-		javaHome = findRegexInText(`(.*)/bin/java`, versionSettings)
-	}
-
-	if javaRuntimeName == "" {
-		javaRuntimeName = findRegexInText(`(.*\sRuntime\sEnvironment).*?`, versionSettings)
-	}
-
-	if javaRuntimeVersion == "" {
-		javaRuntimeVersion = findRegexInText(`.*Runtime\sEnvironment\s\(build (.*)\)`, versionSettings)
-	}
-
-	if javaVersion == "" {
-		javaVersion = findRegexInText(`.*\sversion\s"(.*)".*`, versionSettings)
-	}
-
-	if javaVersionDate == "" {
-		javaVersionDate = findRegexInText(`.*version.*".*"\s(.*)`, versionSettings)
-	}
-
-	if javaVMName == "" {
-		javaVMName = findRegexInText(`(.*Server VM).*build`, versionSettings)
-	}
-
-	versionInfo := JavaInfoRunningProcs{
-		JavaHome:           javaHome,
-		JavaRuntimeName:    javaRuntimeName,
-		JavaRuntimeVersion: javaRuntimeVersion,
-		JavaVendor:         javaVendor,
-		JavaVersion:        javaVersion,
-		JavaVersionDate:    javaVersionDate,
-		JavaVMName:         javaVMName,
-		JavaVMVendor:       javaVMVendor,
-		JavaVMVersion:      javaVMVersion,
-	}
-
-	return versionInfo
-
-}
-
-func getWinExePaths(javaHomePath string) []string {
-
-	jhomeSplit := strings.Split(javaHomePath, "\\")
-	baseAppPath := "C:\\" + filepath.Join(jhomeSplit[:len(jhomeSplit)-1]...)[2:]
-
-	exePaths := []string{}
-	filepath.Walk(baseAppPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			fmt.Println("Skipping dir because ", err)
-			return filepath.SkipDir
-		}
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".exe") && info.Name() != "fsnotifier.exe" {
-			exePaths = append(exePaths, path)
-		}
-		return nil
+	versionInfos = GetJavaVersionInfos(javaLibPaths)
+	sort.Slice(versionInfos, func(i, j int) bool {
+		return versionInfos[i].JavaVersion > versionInfos[j].JavaVersion
 	})
 
-	return exePaths
-}
-
-func fillRunningProcInfoOnWindows(exePaths []string, procDir, cmdLine string) (JavaInfoRunningProcs, error) {
-
-	pinfo := JavaInfoRunningProcs{}
-
-	for _, exePath := range exePaths {
-		if exePath == procDir {
-			pinfo.ProcessRunning = true
-			pinfo.ProcessPath = procDir
-			pinfo.CommandLine = cmdLine
-			return pinfo, nil
+	var toolFound *JavaInfoRunningProcs
+	for _, info := range versionInfos {
+		if info.JpsJinfoPresent {
+			toolFound = &info
+			break
 		}
 	}
 
-	return pinfo, fmt.Errorf("no running process")
-}
-
-func fillRunningProcInfo(javaBinPath, procDir, cmdLine string) (JavaInfoRunningProcs, error) {
-
-	pinfo := JavaInfoRunningProcs{}
-
-	if javaBinPath == procDir {
-		pinfo.ProcessRunning = true
-		pinfo.ProcessPath = procDir
-		pinfo.CommandLine = cmdLine
-		return pinfo, nil
+	if toolFound != nil {
+		javaProcesses := GetJavaProcessInfo(toolFound.JavaHome)
+		javaInfos = append(javaInfos, javaProcesses...)
+	} else {
+		fmt.Println("Did not find the jinfo and jps binaries, running processes will not be identified.")
 	}
 
-	return pinfo, fmt.Errorf("no running process")
+	mergedJavaInfo := mergeSlices(javaInfos, versionInfos)
 
+	return mergedJavaInfo
 }
 
-func getProcInfo(javaBinPath, javaHomePath string, runningProcs []ProcessInfo) JavaInfoRunningProcs {
+func mergeSlices(processInfo, versionInfo []JavaInfoRunningProcs) []JavaInfoRunningProcs {
+	mergedSlice := make([]JavaInfoRunningProcs, 0)
+	versionMap := make(map[string]*JavaInfoRunningProcs)
+	processMap := make(map[string]bool)
 
-	exePaths := []string{}
-	pinfo := JavaInfoRunningProcs{}
-	for _, rProc := range runningProcs {
+	// Create a map from versionInfo
+	for i, vInfoItem := range versionInfo {
+		normalizedJavaHome := normalizePath(vInfoItem.JavaHome)
+		versionMap[normalizedJavaHome] = &versionInfo[i]
+	}
 
-		if runtime.GOOS == "windows" {
+	// Iterate over processInfo and merge or add unique items
+	for _, pInfoItem := range processInfo {
+		normalizedJavaHome := normalizePath(pInfoItem.JavaHome)
+		if vInfoItem, exists := versionMap[normalizedJavaHome]; exists {
+			// Merge with versionInfo item
+			mergedItem := *vInfoItem
+			mergedItem.ProcessRunning = pInfoItem.ProcessRunning
+			mergedItem.ProcessPath = pInfoItem.ProcessPath
+			mergedItem.CommandLine = pInfoItem.CommandLine
+			mergedSlice = append(mergedSlice, mergedItem)
 
-			if len(exePaths) == 0 {
-				exePaths = getWinExePaths(javaHomePath)
-			}
-
-			pinfowinfound, winerr := fillRunningProcInfoOnWindows(exePaths, rProc.ProcDir, rProc.CommandLine)
-			if winerr == nil {
-				pinfo = pinfowinfound
-				break
-			}
-
+			// Mark as processed
+			processMap[normalizedJavaHome] = true
 		} else {
-
-			pinfofound, err := fillRunningProcInfo(javaBinPath, rProc.ProcDir, rProc.CommandLine)
-			if err == nil {
-				pinfo = pinfofound
-				break
-			}
-
+			// Add unique processInfo item
+			mergedSlice = append(mergedSlice, pInfoItem)
 		}
 	}
 
-	return pinfo
-}
-
-func GetFullJavaInfo(searchPaths []string) []JavaInfoRunningProcs {
-
-	hostName, _ := os.Hostname()
-	javaBinFileName := getJavaBinFileName()
-	javaCBinFileName := getJavaCBinFileName()
-
-	javaSharedLibPaths := getJavaSharedLibPaths(searchPaths)
-	runningProcs := getRunningProcCommands()
-
-	jInfoProcs := []JavaInfoRunningProcs{}
-	for _, jpath := range javaSharedLibPaths {
-
-		jbasePath := getJavaBasePath(jpath)
-		javaBinPath := getJavaPath(jbasePath, javaBinFileName)
-		javaCBinPath := getJavaPath(jbasePath, javaCBinFileName)
-
-		isJDK := javaCBinPath != ""
-
-		vinfo := JavaInfoRunningProcs{}
-		if javaBinPath != "" {
-			javaBinSettingsOutput := getJavaFullVersionSettings(javaBinPath)
-			if javaBinSettingsOutput != "" {
-				vinfo = extractInfoFromFullVersionSettings(javaBinSettingsOutput)
-			}
+	// Add any versionInfo items that weren't merged
+	for _, vInfoItem := range versionInfo {
+		normalizedJavaHome := normalizePath(vInfoItem.JavaHome)
+		if !processMap[normalizedJavaHome] {
+			mergedSlice = append(mergedSlice, vInfoItem)
 		}
-
-		pinfo := getProcInfo(javaBinPath, vinfo.JavaHome, runningProcs)
-
-		jinfo := JavaInfoRunningProcs{
-			HostName:      hostName,
-			DynLibBinPath: jpath,
-			JavaBinPath:   javaBinPath,
-			JavaCBinPath:  javaCBinPath,
-			IsJDK:         isJDK,
-
-			JavaHome:           vinfo.JavaHome,
-			JavaRuntimeName:    vinfo.JavaRuntimeName,
-			JavaRuntimeVersion: vinfo.JavaRuntimeVersion,
-			JavaVendor:         vinfo.JavaVendor,
-			JavaVersion:        vinfo.JavaVersion,
-			JavaVersionDate:    vinfo.JavaVersionDate,
-			JavaVMName:         vinfo.JavaVMName,
-			JavaVMVendor:       vinfo.JavaVMVendor,
-			JavaVMVersion:      vinfo.JavaVMVersion,
-
-			ProcessRunning: pinfo.ProcessRunning,
-			ProcessPath:    pinfo.ProcessPath,
-			CommandLine:    pinfo.CommandLine,
-		}
-
-		jInfoProcs = append(jInfoProcs, jinfo)
-
 	}
 
-	return jInfoProcs
-
+	return mergedSlice
 }
