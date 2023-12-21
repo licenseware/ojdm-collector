@@ -82,6 +82,7 @@ func updateJavaInfoWithJinfoData(jinfoOutput string, javaProcess JavaProcess) Ja
 	javaInfo.JavaVMVendor = findRegexInText(`java.vm.vendor=(.*)`, jinfoOutput)
 	javaInfo.JavaVMVersion = findRegexInText(`java.vm.version=(.*)`, jinfoOutput)
 	javaInfo.ProcessRunning = true
+	javaInfo.HostLogicalProcessors = runtime.NumCPU()
 
 	return javaInfo
 }

@@ -21,7 +21,6 @@ func getJavaSharedLibFileName() string {
 }
 
 func getJavaSharedLibPaths(searchPaths []string) []string {
-
 	javaSharedLibFilename := getJavaSharedLibFileName()
 
 	if len(searchPaths) == 0 {
@@ -30,11 +29,10 @@ func getJavaSharedLibPaths(searchPaths []string) []string {
 		fmt.Println("Java Search Paths: ", searchPaths)
 	}
 
+	javaFilesMap := make(map[string]bool)
 	var javaFiles []string
 	for _, searchPath := range searchPaths {
-
 		filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
-
 			if err != nil {
 				if os.IsPermission(err) {
 					return filepath.SkipDir
@@ -43,19 +41,20 @@ func getJavaSharedLibPaths(searchPaths []string) []string {
 			}
 
 			if !info.IsDir() {
-				serverFolder := filepath.Base(filepath.Base(filepath.Dir(path)))
+				serverFolder := filepath.Base(filepath.Dir(path))
 				if info.Name() == javaSharedLibFilename && serverFolder == "server" {
-					fmt.Printf("Found %s in path %s\n", info.Name(), path)
-					javaFiles = append(javaFiles, path)
+					if _, exists := javaFilesMap[path]; !exists {
+						fmt.Printf("Found %s in path %s\n", info.Name(), path)
+						javaFilesMap[path] = true
+						javaFiles = append(javaFiles, path)
+					}
 				}
 			}
 
 			return nil
 		})
-
 	}
 
 	fmt.Printf("Finished gathering all java related paths!\n")
 	return javaFiles
-
 }

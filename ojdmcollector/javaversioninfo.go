@@ -1,6 +1,7 @@
 package ojdmcollector
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,17 +10,24 @@ import (
 	"strings"
 )
 
-func getJavaBinaryPath(javaDllPath string) string {
-	// Assuming javaDllPath is the path to the jvm.dll or equivalent file
-	dir := filepath.Dir(javaDllPath)
-	if strings.HasSuffix(dir, "server") {
-		dir = filepath.Dir(dir) // Go up one level to the bin directory
-	}
-	javaBin := "java"
+func getJavaBinaryPath(javaDllPath string) (string, error) {
+
+	javaExec := "java"
 	if runtime.GOOS == "windows" {
-		javaBin = "java.exe"
+		javaExec = "java.exe"
 	}
-	return filepath.Join(dir, javaBin)
+
+	dir := filepath.Dir(javaDllPath)
+	for i := 0; i < 4; i++ {
+		dir = filepath.Dir(dir)
+		binPath := filepath.Join(dir, "bin")
+		javaPath := filepath.Join(binPath, javaExec)
+		if _, err := os.Stat(javaPath); err == nil {
+			return javaPath, nil
+		}
+	}
+	return "", fmt.Errorf("java bin folder with executable not found")
+
 }
 
 func executeJavaBinary(javaBinPath string) (string, error) {
@@ -70,7 +78,10 @@ func parseJavaVersionOutput(output string) JavaInfoRunningProcs {
 func GetJavaVersionInfos(javaDllPaths []string) []JavaInfoRunningProcs {
 	var versionInfos []JavaInfoRunningProcs
 	for _, dllPath := range javaDllPaths {
-		javaBinPath := getJavaBinaryPath(dllPath)
+		javaBinPath, err := getJavaBinaryPath(dllPath)
+		if err != nil {
+			continue
+		}
 		output, err := executeJavaBinary(javaBinPath)
 		if err != nil {
 			continue // Handle error or log as needed
@@ -87,6 +98,7 @@ func GetJavaVersionInfos(javaDllPaths []string) []JavaInfoRunningProcs {
 			info.IsJDK = false
 		}
 		info.HostName = getHostName()
+		info.HostLogicalProcessors = runtime.NumCPU()
 		versionInfos = append(versionInfos, info)
 	}
 	return versionInfos

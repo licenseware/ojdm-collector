@@ -11,9 +11,6 @@ func CollectJavaInfo(searchPaths []string) []JavaInfoRunningProcs {
 	var versionInfos []JavaInfoRunningProcs
 	javaLibPaths := getJavaSharedLibPaths(nil) // Assuming this function is defined in javasearch.go
 
-	hostInfo := GetHostInfo()
-	fmt.Printf("Processors: %d, Cores: %d\n", hostInfo.Processors, hostInfo.Cores)
-
 	versionInfos = GetJavaVersionInfos(javaLibPaths)
 	sort.Slice(versionInfos, func(i, j int) bool {
 		return versionInfos[i].JavaVersion > versionInfos[j].JavaVersion
@@ -35,11 +32,6 @@ func CollectJavaInfo(searchPaths []string) []JavaInfoRunningProcs {
 	}
 
 	mergedJavaInfo := mergeSlices(javaInfos, versionInfos)
-
-	for i := range mergedJavaInfo {
-		mergedJavaInfo[i].HostProcessors = hostInfo.Processors
-		mergedJavaInfo[i].HostCores = hostInfo.Cores
-	}
 
 	return mergedJavaInfo
 }
