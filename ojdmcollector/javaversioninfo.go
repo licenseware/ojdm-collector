@@ -5,9 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"strings"
 )
 
 func getJavaBinaryPath(javaDllPath string) (string, error) {
@@ -34,15 +32,6 @@ func executeJavaBinary(javaBinPath string) (string, error) {
 	cmd := exec.Command(javaBinPath, "-XshowSettings:all", "-version")
 	output, err := cmd.CombinedOutput()
 	return string(output), err
-}
-
-func findRegexInText(regex, text string) string {
-	re := regexp.MustCompile(regex)
-	match := re.FindStringSubmatch(text)
-	if len(match) > 1 {
-		return strings.TrimSpace(match[1])
-	}
-	return ""
 }
 
 // checkToolExists checks if a given tool (jps or jinfo) exists in the Java installation's bin directory.

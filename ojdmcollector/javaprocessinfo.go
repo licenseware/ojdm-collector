@@ -71,7 +71,7 @@ func updateJavaInfoWithJinfoData(jinfoOutput string, javaProcess JavaProcess) Ja
 	var javaInfo JavaInfoRunningProcs
 
 	javaInfo.HostName = getHostName()
-	javaInfo.ProcessPath = normalizePath(findRegexInText(`user.dir=(.*)`, jinfoOutput))
+	javaInfo.ProcessPath = normalizePath(findRegexInText(`(?m)^user.dir=(.*)`, jinfoOutput))
 	javaInfo.CommandLine = javaProcess.CommandLine
 	javaInfo.JavaHome = normalizePath(findRegexInText(`java.home=(.*)`, jinfoOutput))
 	javaInfo.JavaRuntimeName = findRegexInText(`java.runtime.name=(.*)`, jinfoOutput)

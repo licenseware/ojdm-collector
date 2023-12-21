@@ -4,6 +4,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strings"
 )
 
 func normalizePath(path string) string {
@@ -26,4 +27,13 @@ func getHostName() string {
 		return ""
 	}
 	return hostname
+}
+
+func findRegexInText(regex, text string) string {
+	re := regexp.MustCompile(regex)
+	match := re.FindStringSubmatch(text)
+	if len(match) > 1 {
+		return strings.TrimSpace(match[1])
+	}
+	return ""
 }
