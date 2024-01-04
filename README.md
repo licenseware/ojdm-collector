@@ -1,4 +1,4 @@
-# Licenserware ODJM Collector
+# Licenseware ODJM Collector
 
 ## Introduction
 This program is designed to search for Java installations on the machine where it's running, collect information about the machine and the Java installations and generate a CSV report. It uses the jinfo and jps binaries found in most Java JDKs to connect to the JVM and collect data on running processes. If the binaries are not found, only information on installed Java instances is collected. There is no dependency to a certain JDK vendor or version to run this program.
