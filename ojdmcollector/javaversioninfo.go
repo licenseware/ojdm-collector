@@ -76,6 +76,7 @@ func GetJavaVersionInfos(javaDllPaths []string) []JavaInfoRunningProcs {
 			continue // Handle error or log as needed
 		}
 		info := parseJavaVersionOutput(output)
+		info.DynLibBinPath = dllPath
 		if checkToolExists(javaBinPath, "jps") && checkToolExists(javaBinPath, "jinfo") {
 			info.JpsJinfoPresent = true
 		}
