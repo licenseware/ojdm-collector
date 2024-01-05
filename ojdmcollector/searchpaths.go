@@ -62,6 +62,15 @@ func getSearchPaths() []string {
         		}
     		}
 
+		    // Add the all users profile directory
+    		allUsersProfileDir := os.Getenv("ALLUSERSPROFILE")
+    		if allUsersProfileDir != "" {
+        		allUsersAppDataPath := filepath.Join(allUsersProfileDir, "AppData", "Local")
+        		if _, err := os.Stat(allUsersAppDataPath); err == nil {
+            			winPaths = append(winPaths, allUsersAppDataPath)
+        		}
+    		}
+
 		paths = append(paths, winPaths...)
 		fmt.Println("Windows Java Search Paths: ", paths)
 		return paths
