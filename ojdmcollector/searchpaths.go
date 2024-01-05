@@ -62,7 +62,7 @@ func getSearchPaths() []string {
         		}
     		}
 
-		    // Add the all users profile directory
+		// Add the all users profile directory
     		allUsersProfileDir := os.Getenv("ALLUSERSPROFILE")
     		if allUsersProfileDir != "" {
         		allUsersAppDataPath := filepath.Join(allUsersProfileDir, "AppData", "Local")
