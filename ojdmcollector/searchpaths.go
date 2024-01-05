@@ -43,8 +43,25 @@ func getSearchPaths() []string {
 		return paths
 
 	case "windows":
-		appDataDir := os.Getenv("LocalAppData")
-		winPaths := []string{"C:\\Program Files", "C:\\Program Files (x86)", appDataDir}
+		winPaths := []string{"C:\\Program Files", "C:\\Program Files (x86)"}
+		
+		// Get a list of user profiles
+		userProfiles, err := filepath.Glob(filepath.Join(filepath.Dir(userProfileDir), "*"))
+		if err != nil {
+        		fmt.Println("Error getting user profiles:", err)
+        		return paths
+		}
+
+		// Iterate over user profiles and add local app data paths
+    		for _, userProfile := range userProfiles {
+       			if userProfile != userProfileDir {
+            			appDataPath := filepath.Join(userProfile, "AppData", "Local")
+            			if _, err := os.Stat(appDataPath); err == nil {
+	                		winPaths = append(winPaths, appDataPath)
+        	   		}
+        		}
+    		}
+
 		paths = append(paths, winPaths...)
 		fmt.Println("Windows Java Search Paths: ", paths)
 		return paths
