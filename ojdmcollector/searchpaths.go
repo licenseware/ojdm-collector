@@ -44,6 +44,12 @@ func getSearchPaths() []string {
 
 	case "windows":
 		winPaths := []string{"C:\\Program Files", "C:\\Program Files (x86)"}
+
+		userProfileDir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("Error getting user home directory:", err)
+			return paths
+		}
 		
 		// Get a list of user profiles
 		userProfiles, err := filepath.Glob(filepath.Join(filepath.Dir(userProfileDir), "*"))
