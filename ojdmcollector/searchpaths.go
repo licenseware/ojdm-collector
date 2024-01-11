@@ -60,12 +60,10 @@ func getSearchPaths() []string {
 
 		// Iterate over user profiles and add local app data paths
     		for _, userProfile := range userProfiles {
-       			if userProfile != userProfileDir {
-            			appDataPath := filepath.Join(userProfile, "AppData", "Local")
-            			if _, err := os.Stat(appDataPath); err == nil {
-	                		winPaths = append(winPaths, appDataPath)
-        	   		}
-        		}
+			appDataPath := filepath.Join(userProfile, "AppData", "Local")
+			if _, err := os.Stat(appDataPath); err == nil {
+				winPaths = append(winPaths, appDataPath)
+			}
     		}
 
 		// Add the all users profile directory
