@@ -70,3 +70,6 @@ On MacOs:
 
 ## Troubleshooting
 If no running processes are identified, it may be because the jinfo and jps utilities could not be found on any of the discovered java installations. The easiest way to fix this is to place an OpenJDK in any of the default search paths or to include the location of the OpenJDK in the additional search paths. 
+
+## Mentions
+Thanks to the Azul JDowser product which served as the inspiration for this tool. 
