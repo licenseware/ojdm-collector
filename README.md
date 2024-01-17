@@ -5,12 +5,12 @@ This program is designed to search for Java installations on the machine where i
 
 ## How to download
 Go to `Releases` page on the right side bar
-![Releases Page](image.png)
+![Releases Page](docs/releases.png)
 
 Then using `Assets` select the right package for your operating system and cpu architecture,
 naming convention is `ojdm-collector-version_os_architecture`
 
-![Assets](image-1.png)
+![Assets](docs/assets.png)
 ## How to use
 On Windows:
 `ojdm-collector.exe`
