@@ -9,7 +9,7 @@ func CollectJavaInfo(searchPaths []string) []JavaInfoRunningProcs {
 
 	var javaInfos []JavaInfoRunningProcs
 	var versionInfos []JavaInfoRunningProcs
-	javaLibPaths := getJavaSharedLibPaths(nil) // Assuming this function is defined in javasearch.go
+	javaLibPaths := getJavaSharedLibPaths(searchPaths)
 
 	versionInfos = GetJavaVersionInfos(javaLibPaths)
 	sort.Slice(versionInfos, func(i, j int) bool {

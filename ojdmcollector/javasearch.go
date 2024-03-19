@@ -23,11 +23,9 @@ func getJavaSharedLibFileName() string {
 func getJavaSharedLibPaths(searchPaths []string) []string {
 	javaSharedLibFilename := getJavaSharedLibFileName()
 
-	if len(searchPaths) == 0 {
-		searchPaths = getSearchPaths()
-	} else {
-		fmt.Println("Java Search Paths: ", searchPaths)
-	}
+	searchPaths = append(searchPaths, getSearchPaths()...)
+
+	fmt.Println("Java Search Paths: ", searchPaths)
 
 	javaFilesMap := make(map[string]bool)
 	var javaFiles []string
