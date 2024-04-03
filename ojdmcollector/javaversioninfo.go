@@ -8,24 +8,39 @@ import (
 	"runtime"
 )
 
-func getJavaBinaryPath(javaDllPath string) (string, error) {
-
+func getJavaBinaryPath(basePath string) (string, error) {
 	javaExec := "java"
 	if runtime.GOOS == "windows" {
-		javaExec = "java.exe"
+		javaExec += ".exe"
 	}
 
-	dir := filepath.Dir(javaDllPath)
-	for i := 0; i < 4; i++ {
-		dir = filepath.Dir(dir)
-		binPath := filepath.Join(dir, "bin")
-		javaPath := filepath.Join(binPath, javaExec)
-		if _, err := os.Stat(javaPath); err == nil {
-			return javaPath, nil
-		}
-	}
-	return "", fmt.Errorf("java bin folder with executable not found")
+	javaPath := filepath.Join(basePath, "bin", javaExec)
 
+	if _, err := os.Stat(javaPath); !os.IsNotExist(err) {
+		return javaPath, nil // Executable found
+	}
+
+	return "", fmt.Errorf("java executable not found at %s", javaPath)
+}
+
+func getJavaDLLPath(basePath string) (string, error) {
+	var dllFileName string
+	switch runtime.GOOS {
+	case "windows":
+		dllFileName = "jvm.dll"
+	case "darwin":
+		dllFileName = "libjvm.dylib"
+	default:
+		dllFileName = "libjvm.so"
+	}
+
+	dllPath := filepath.Join(basePath, "lib", "server", dllFileName)
+
+	if _, err := os.Stat(dllPath); !os.IsNotExist(err) {
+		return dllPath, nil // File found
+	}
+
+	return "", fmt.Errorf("%s not found at %s", dllFileName, dllPath)
 }
 
 func executeJavaBinary(javaBinPath string) (string, error) {
@@ -64,10 +79,10 @@ func parseJavaVersionOutput(output string) JavaInfoRunningProcs {
 	}
 }
 
-func GetJavaVersionInfos(javaDllPaths []string) []JavaInfoRunningProcs {
+func GetJavaVersionInfos(javaBasePaths []string) []JavaInfoRunningProcs {
 	var versionInfos []JavaInfoRunningProcs
-	for _, dllPath := range javaDllPaths {
-		javaBinPath, err := getJavaBinaryPath(dllPath)
+	for _, basePath := range javaBasePaths {
+		javaBinPath, err := getJavaBinaryPath(basePath)
 		if err != nil {
 			continue
 		}
@@ -76,7 +91,8 @@ func GetJavaVersionInfos(javaDllPaths []string) []JavaInfoRunningProcs {
 			continue // Handle error or log as needed
 		}
 		info := parseJavaVersionOutput(output)
-		info.DynLibBinPath = dllPath
+		javaDllPath, err := getJavaDLLPath(basePath)
+		info.DynLibBinPath = javaDllPath
 		if checkToolExists(javaBinPath, "jps") && checkToolExists(javaBinPath, "jinfo") {
 			info.JpsJinfoPresent = true
 		}
