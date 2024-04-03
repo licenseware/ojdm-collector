@@ -92,7 +92,12 @@ func GetJavaVersionInfos(javaBasePaths []string) []JavaInfoRunningProcs {
 		}
 		info := parseJavaVersionOutput(output)
 		javaDllPath, err := getJavaDLLPath(basePath)
-		info.DynLibBinPath = javaDllPath
+		if err != nil {
+			fmt.Printf("Error getting Java DLL Path: %v", err)
+		} else {
+
+			info.DynLibBinPath = javaDllPath
+		}
 		if checkToolExists(javaBinPath, "jps") && checkToolExists(javaBinPath, "jinfo") {
 			info.JpsJinfoPresent = true
 		}
