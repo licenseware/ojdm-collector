@@ -5,23 +5,22 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
-func getJavaSharedLibFileName() string {
+func getJavaSharedLibFileName() []string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "libjvm.dylib"
-	case "linux":
-		return "libjvm.so"
+		return []string{"libjvm.dylib", "java", "javac"}
 	case "windows":
-		return "jvm.dll"
+		return []string{"jvm.dll", "java.exe", "javac.exe"}
 	default:
-		return "libjvm.so"
+		return []string{"libjvm.so", "java", "javac"}
 	}
 }
 
 func getJavaSharedLibPaths(searchPaths []string) []string {
-	javaSharedLibFilename := getJavaSharedLibFileName()
+	javaSharedLibFilenames := getJavaSharedLibFileName()
 
 	searchPaths = append(searchPaths, getSearchPaths()...)
 
@@ -38,13 +37,15 @@ func getJavaSharedLibPaths(searchPaths []string) []string {
 				return err
 			}
 
-			if !info.IsDir() {
-				serverFolder := filepath.Base(filepath.Dir(path))
-				if info.Name() == javaSharedLibFilename && serverFolder == "server" {
-					if _, exists := javaFilesMap[path]; !exists {
-						fmt.Printf("Found %s in path %s\n", info.Name(), path)
-						javaFilesMap[path] = true
-						javaFiles = append(javaFiles, path)
+			if !info.IsDir() && isInTargetSubfolder(path) {
+				for _, javaSharedLibFilename := range javaSharedLibFilenames {
+					if info.Name() == javaSharedLibFilename {
+						cleanPath := processPath(path)
+						if _, exists := javaFilesMap[cleanPath]; !exists {
+							fmt.Printf("Found %s in path %s\n", info.Name(), path)
+							javaFilesMap[cleanPath] = true
+							javaFiles = append(javaFiles, cleanPath)
+						}
 					}
 				}
 			}
@@ -55,4 +56,18 @@ func getJavaSharedLibPaths(searchPaths []string) []string {
 
 	fmt.Printf("Finished gathering all java related paths!\n")
 	return javaFiles
+}
+
+func processPath(path string) string {
+	if idx := strings.Index(path, "/bin"); idx != -1 {
+		return path[:idx]
+	}
+	if idx := strings.Index(path, "/lib/server"); idx != -1 {
+		return path[:idx]
+	}
+	return path
+}
+
+func isInTargetSubfolder(path string) bool {
+	return strings.Contains(path, "/bin/") || strings.Contains(path, "/lib/server/")
 }
