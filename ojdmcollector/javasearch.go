@@ -59,15 +59,21 @@ func getJavaSharedLibPaths(searchPaths []string) []string {
 }
 
 func processPath(path string) string {
-	if idx := strings.Index(path, "/bin"); idx != -1 {
-		return path[:idx]
+	normalizedPath := normalizeSearchPath(path)
+	if idx := strings.Index(normalizedPath, "/bin"); idx != -1 {
+		return normalizedPath[:idx]
 	}
-	if idx := strings.Index(path, "/lib/server"); idx != -1 {
-		return path[:idx]
+	if idx := strings.Index(normalizedPath, "/lib/server"); idx != -1 {
+		return normalizedPath[:idx]
 	}
-	return path
+	return normalizedPath
 }
 
 func isInTargetSubfolder(path string) bool {
-	return strings.Contains(path, "/bin/") || strings.Contains(path, "/lib/server/")
+	normalizedPath := normalizeSearchPath(path)
+	return strings.Contains(normalizedPath, "/bin/") || strings.Contains(normalizedPath, "/lib/server/")
+}
+
+func normalizeSearchPath(path string) string {
+	return strings.ReplaceAll(filepath.ToSlash(path), "\\", "/")
 }

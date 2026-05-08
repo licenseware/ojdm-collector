@@ -30,9 +30,23 @@ The report.csv file will be generated in the location from which the program was
     -search-paths string
             Optional: List of paths separated by comma where to search for java info.
 
+    -search-paths-file string
+            Optional: Path to a file containing additional search paths, one path per line.
+
     $ ojdm-collector -output-path=/path/to/csvreport.csv
     $ ojdm-collector -search-paths=/home,/oracle,/opt
+    $ ojdm-collector -search-paths-file=/path/to/search-paths.txt
     $ ojdm-collector -search-paths=/home,/usr,/opt -output-path=/path/to/csvreport.csv
+
+Search paths from `-search-paths` and `-search-paths-file` are added to the default searched paths. They do not replace the defaults.
+
+Example `search-paths.txt`:
+
+    # one path per line; blank lines are ignored
+    /opt/custom-java
+    /mnt/shared/java
+    /Volumes/shared-java
+    \\server\share\java
 
 ## Collected data
 | HostName | DynLibBinPath                                                       | JavaBinPath                                                   | JavaCBinPath                              | IsJDK | JavaHome                                         | JavaRuntimeName                 | JavaRuntimeVersion | JavaVendor         | JavaVersion | JavaVersionDate | JavaVMName                        | JavaVMVendor       | JavaVMVersion    | ProcessPath                                                                                                                       | ProcessRunning | CommandLine                                                                         | HostLogicalProcessors |
@@ -47,12 +61,30 @@ The report.csv file will be generated in the location from which the program was
 | Reactor1 | C:\Program Files\Java\jre1.8.0_202\bin\server\jvm.dll               | C:\Program Files\Java\jre1.8.0_202\bin\java.exe               |                                           | false | C:/Program Files/Java/jre1.8.0_202               | Java(TM) SE Runtime Environment | 1.8.0_202-b08      | Oracle Corporation | 1.8.0_202   |                 | Java HotSpot(TM) 64-Bit Server VM | Oracle Corporation | 25.202-b08       |                                                                                                                                   | false          |                                                                                     | 24                    |
 
 ## Searched paths
-By default the program will search for Java installations in several specific locations depending on the operating system. Additional paths can be provided by using the -search-paths parameter when runnning the program. 
+
+The collector also supports scanning external locations such as mapped drives, mounted volumes, and network shares, but users must pass those locations as additional paths with `-search-paths` or `-search-paths-file`.
+
+Additional path examples:
+
+    $ ojdm-collector -search-paths=/mnt/shared/java,/opt/custom-java
+    $ ojdm-collector -search-paths-file=/etc/ojdm-collector/search-paths.txt
+    $ ojdm-collector.exe -search-paths="Z:\Java,\\server\share\java"
+
+Example `search-paths.txt` file:
+
+    # one path per line; blank lines are ignored
+    /opt/custom-java
+    /mnt/shared/java
+    /Volumes/shared-java
+    \\server\share\java
+
+By default the program searches for Java installations in several specific local locations depending on the operating system. 
 
 On Windows: 
-* LocalAppData (from environment variables)
 * C:\\Program Files
 * C:\\Program Files (x86)
+* AppData\\Local for detected user profiles
+* ALLUSERSPROFILE\\AppData\\Local when available
 
 On Linux:
 * /home
@@ -64,9 +96,12 @@ On Linux:
 * /snap
 * /oracle
 * /bin
+* ~/.local/share
 
 On MacOs:
 * /Applications
+
+
 
 ## Troubleshooting
 If no running processes are identified, it may be because the jinfo and jps utilities could not be found on any of the discovered java installations. The easiest way to fix this is to place an OpenJDK in any of the default search paths or to include the location of the OpenJDK in the additional search paths. 
