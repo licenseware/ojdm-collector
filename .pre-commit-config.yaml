@@ -1,0 +1,83 @@
+repos:
+  - repo: https://github.com/oxc-project/mirrors-oxlint
+    rev: v1.43.0
+    hooks:
+      - id: oxlint
+        verbose: false
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+      - id: check-ast
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-shebang-scripts-are-executable
+      - id: check-yaml
+        args:
+          - --allow-multiple-documents
+      - id: detect-private-key
+        exclude: |
+          (?x)^(
+          )$
+      - id: detect-aws-credentials
+        args:
+          - --allow-missing-credentials
+      - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+          )$
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-vcs-permalinks
+      - id: check-xml
+      - id: debug-statements
+      - id: destroyed-symlinks
+      - id: file-contents-sorter
+      - id: fix-byte-order-marker
+      - id: fix-encoding-pragma
+      - id: forbid-new-submodules
+      - id: forbid-submodules
+      - id: mixed-line-ending
+      - id: name-tests-test
+      - id: requirements-txt-fixer
+      - id: sort-simple-yaml
+      - id: trailing-whitespace
+      - id: pretty-format-json
+        args:
+          - --autofix
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.24.0
+    hooks:
+      - id: commitlint
+        stages: [commit-msg]
+        additional_dependencies: ["@commitlint/config-conventional"]
+  - repo: https://github.com/Bahjat/pre-commit-golang
+    rev: v1.0.5
+    hooks:
+      - id: go-fmt-import
+      - id: go-vet
+      - id: go-lint
+      - id: go-unit-tests
+      - id: gofumpt # requires github.com/mvdan/gofumpt
+      # - id: go-err-check # requires github.com/kisielk/errcheck
+      # - id: go-static-check # install https://staticcheck.io/docs/
+      - id: golangci-lint # requires github.com/golangci/golangci-lint
+        args: [--config=.github/linters/.golangci.yml] # optional
+      - id: go-ruleguard # requires https://github.com/quasilyte/go-ruleguard
+        args: [rules/rules.go]
+      - id: go-imports-reviser # requires https://github.com/incu6us/goimports-reviser
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.10
+    hooks:
+      - id: actionlint
+  - repo: https://github.com/reteps/dockerfmt
+    rev: v0.3.9
+    hooks:
+      - id: dockerfmt
+        args:
+          - --indent=4
