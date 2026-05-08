@@ -50,30 +50,30 @@ func getSearchPaths() []string {
 			fmt.Println("Error getting user home directory:", err)
 			return paths
 		}
-		
+
 		// Get a list of user profiles
 		userProfiles, err := filepath.Glob(filepath.Join(filepath.Dir(userProfileDir), "*"))
 		if err != nil {
-        		fmt.Println("Error getting user profiles:", err)
-        		return paths
+			fmt.Println("Error getting user profiles:", err)
+			return paths
 		}
 
 		// Iterate over user profiles and add local app data paths
-    		for _, userProfile := range userProfiles {
+		for _, userProfile := range userProfiles {
 			appDataPath := filepath.Join(userProfile, "AppData", "Local")
 			if _, err := os.Stat(appDataPath); err == nil {
 				winPaths = append(winPaths, appDataPath)
 			}
-    		}
+		}
 
 		// Add the all users profile directory
-    		allUsersProfileDir := os.Getenv("ALLUSERSPROFILE")
-    		if allUsersProfileDir != "" {
-        		allUsersAppDataPath := filepath.Join(allUsersProfileDir, "AppData", "Local")
-        		if _, err := os.Stat(allUsersAppDataPath); err == nil {
-            			winPaths = append(winPaths, allUsersAppDataPath)
-        		}
-    		}
+		allUsersProfileDir := os.Getenv("ALLUSERSPROFILE")
+		if allUsersProfileDir != "" {
+			allUsersAppDataPath := filepath.Join(allUsersProfileDir, "AppData", "Local")
+			if _, err := os.Stat(allUsersAppDataPath); err == nil {
+				winPaths = append(winPaths, allUsersAppDataPath)
+			}
+		}
 
 		paths = append(paths, winPaths...)
 		fmt.Println("Windows Java Search Paths: ", paths)

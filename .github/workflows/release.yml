@@ -3,9 +3,9 @@ name: goreleaser
 
 on:
     release:
-      types: 
+      types:
           - created
-  
+
 
 permissions:
   contents: write

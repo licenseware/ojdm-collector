@@ -18,7 +18,7 @@ On Windows:
 On Linux / MacOS:
 `./ojdm-collector`
 
-Running the tool on Linux may require to first make it executable by running 
+Running the tool on Linux may require to first make it executable by running
 `chmod +x ojdm-collector`
 
 The report.csv file will be generated in the location from which the program was executed
@@ -26,7 +26,7 @@ The report.csv file will be generated in the location from which the program was
 ### Optional arguments
     -output-path string
             Optional: Path to csv report. (default "report.csv")
-    
+
     -search-paths string
             Optional: List of paths separated by comma where to search for java info.
 
@@ -78,9 +78,9 @@ Example `search-paths.txt` file:
     /Volumes/shared-java
     \\server\share\java
 
-By default the program searches for Java installations in several specific local locations depending on the operating system. 
+By default the program searches for Java installations in several specific local locations depending on the operating system.
 
-On Windows: 
+On Windows:
 * C:\\Program Files
 * C:\\Program Files (x86)
 * AppData\\Local for detected user profiles
@@ -104,7 +104,7 @@ On MacOs:
 
 
 ## Troubleshooting
-If no running processes are identified, it may be because the jinfo and jps utilities could not be found on any of the discovered java installations. The easiest way to fix this is to place an OpenJDK in any of the default search paths or to include the location of the OpenJDK in the additional search paths. 
+If no running processes are identified, it may be because the jinfo and jps utilities could not be found on any of the discovered java installations. The easiest way to fix this is to place an OpenJDK in any of the default search paths or to include the location of the OpenJDK in the additional search paths.
 
 ## Mentions
-Thanks to the Azul JDowser product which served as the inspiration for this tool. 
+Thanks to the Azul JDowser product which served as the inspiration for this tool.
