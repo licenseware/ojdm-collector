@@ -48,3 +48,18 @@ func TestGetJavaDLLPathErrorsWhenAbsent(t *testing.T) {
 		t.Fatal("expected an error when no VM library is present")
 	}
 }
+
+// JavaCBinPath must carry the platform executable suffix; without it the
+// reported path does not exist on Windows.
+func TestGetToolPathAppendsWindowsSuffix(t *testing.T) {
+	javaBin := filepath.Join("base", "bin", "java")
+	got := getToolPath(javaBin, "javac")
+
+	want := filepath.Join("base", "bin", "javac")
+	if runtime.GOOS == "windows" {
+		want += ".exe"
+	}
+	if got != want {
+		t.Fatalf("getToolPath() = %q, want %q", got, want)
+	}
+}

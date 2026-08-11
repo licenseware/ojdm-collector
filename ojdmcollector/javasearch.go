@@ -70,10 +70,13 @@ func walkForJavaFiles(searchPath string, javaSharedLibFilenames []string, javaFi
 
 func processPath(path string) string {
 	normalizedPath := normalizeSearchPath(path)
-	if idx := strings.Index(normalizedPath, "/bin"); idx != -1 {
+	// The last separator wins: an installation under a root that itself
+	// contains "bin" (C:\bin-tools\jdk-21\bin\java.exe) would otherwise be
+	// truncated to the root, and every lookup below it then fails.
+	if idx := strings.LastIndex(normalizedPath, "/bin/"); idx != -1 {
 		return normalizedPath[:idx]
 	}
-	if idx := strings.Index(normalizedPath, "/lib/server"); idx != -1 {
+	if idx := strings.LastIndex(normalizedPath, "/lib/server/"); idx != -1 {
 		return normalizedPath[:idx]
 	}
 	return normalizedPath

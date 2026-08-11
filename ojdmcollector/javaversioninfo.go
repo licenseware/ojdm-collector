@@ -80,17 +80,18 @@ func executeJavaBinary(javaBinPath string) (string, error) {
 	return string(output), err
 }
 
+// getToolPath builds the path to a tool (jps, jinfo, javac) sitting next to the
+// java binary, including the platform executable suffix.
+func getToolPath(javaBinPath, toolName string) string {
+	if runtime.GOOS == "windows" {
+		toolName += ".exe"
+	}
+	return filepath.Join(filepath.Dir(javaBinPath), toolName)
+}
+
 // checkToolExists checks if a given tool (jps or jinfo) exists in the Java installation's bin directory.
 func checkToolExists(javaBinPath, toolName string) bool {
-	binDir := filepath.Dir(javaBinPath)
-	var toolPath string
-	if runtime.GOOS == "windows" {
-		toolPath = filepath.Join(binDir, toolName+".exe")
-	} else {
-		toolPath = filepath.Join(binDir, toolName)
-	}
-
-	if _, err := os.Stat(toolPath); err == nil {
+	if _, err := os.Stat(getToolPath(javaBinPath, toolName)); err == nil {
 		return true
 	}
 	return false
@@ -115,11 +116,13 @@ func GetJavaVersionInfos(javaBasePaths []string) []JavaInfoRunningProcs {
 	for _, basePath := range javaBasePaths {
 		javaBinPath, err := getJavaBinaryPath(basePath)
 		if err != nil {
+			fmt.Printf("Skipping %s: %v\n", basePath, err)
 			continue
 		}
 		output, err := executeJavaBinary(javaBinPath)
 		if err != nil {
-			continue // Handle error or log as needed
+			fmt.Printf("Skipping %s: could not run %s: %v\n", basePath, javaBinPath, err)
+			continue
 		}
 		info := parseJavaVersionOutput(output)
 		javaDllPath, err := getJavaDLLPath(basePath)
@@ -134,7 +137,7 @@ func GetJavaVersionInfos(javaBasePaths []string) []JavaInfoRunningProcs {
 		}
 		info.JavaBinPath = javaBinPath
 		if checkToolExists(javaBinPath, "javac") {
-			info.JavaCBinPath = normalizePath(filepath.Join(filepath.Dir(javaBinPath), "javac"))
+			info.JavaCBinPath = normalizePath(getToolPath(javaBinPath, "javac"))
 			info.IsJDK = true
 		} else {
 			info.IsJDK = false

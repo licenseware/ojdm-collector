@@ -73,13 +73,14 @@ if ! az vm show --resource-group "$RG" --name "$VM" --output none 2>/dev/null; t
 fi
 
 echo "==> running repro on the VM (several minutes; downloads a JRE + 3 scans)"
-RENDERED="$OUT_DIR/repro-$VARIANT.ps1"
+PS_SCRIPT="${OJDM_SCRIPT:-$SCRIPT_DIR/repro.ps1}"
+RENDERED="$OUT_DIR/$(basename "${PS_SCRIPT%.ps1}")-$VARIANT.ps1"
 # A SAS token is a query string full of '&', which sed expands to the matched
 # text in the replacement half. Escape it, or the VM gets a token-less URL and
 # the storage account rejects the request as anonymous access.
 SAS_ESCAPED="$(printf '%s' "$SAS_BASE" | sed -e 's/[&|\\]/\\&/g')"
 sed -e "s|__ARTIFACT_SAS__|${SAS_ESCAPED}|" -e "s|__VARIANT__|${VARIANT}|" \
-  "$SCRIPT_DIR/repro.ps1" > "$RENDERED"
+  "$PS_SCRIPT" > "$RENDERED"
 
 az vm run-command invoke --resource-group "$RG" --name "$VM" \
   --command-id RunPowerShellScript --scripts "@$RENDERED" \
