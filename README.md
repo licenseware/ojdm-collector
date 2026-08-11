@@ -33,10 +33,17 @@ The report.csv file will be generated in the location from which the program was
     -search-paths-file string
             Optional: Path to a file containing additional search paths, one path per line.
 
+    -log-path string
+            Optional: Path to the debug log. Defaults to a logs/ directory beside the csv report.
+
+    -log-level string
+            Optional: Console verbosity (debug, info, warn, error). The debug log always records everything. (default "info")
+
     $ ojdm-collector -output-path=/path/to/csvreport.csv
     $ ojdm-collector -search-paths=/home,/oracle,/opt
     $ ojdm-collector -search-paths-file=/path/to/search-paths.txt
     $ ojdm-collector -search-paths=/home,/usr,/opt -output-path=/path/to/csvreport.csv
+    $ ojdm-collector -log-path=/path/to/debug.log -log-level=debug
 
 Search paths from `-search-paths` and `-search-paths-file` are added to the default searched paths. They do not replace the defaults.
 
@@ -102,6 +109,29 @@ On MacOs:
 * /Applications
 
 
+
+## Debug log
+Every run writes a structured JSON log next to the csv report, so a report that
+looks wrong can be explained without reproducing it:
+
+    report.csv
+    logs/
+        debug.log
+
+It records the search paths used, every installation found, and every path that
+could not be read, including whether the failure was a permission error:
+
+    {"level":"warn","error":"CreateFile C:\\Program Files (x86)\\...: Access is denied.","permission_denied":true,"path":"...","message":"skipping unreadable path"}
+
+A path skipped this way is not scanned, so an installation underneath it is
+absent from the report. If the csv looks incomplete, read the warnings first.
+
+The console shows the same events at `info` and above; the file always keeps
+`debug` detail. A previous `debug.log` is preserved as `debug-<timestamp>.log`
+rather than overwritten, so re-running after a failure does not destroy the
+evidence of the failing run.
+
+When reporting an issue, attach the whole `logs/` directory alongside the csv.
 
 ## Troubleshooting
 If no running processes are identified, it may be because the jinfo and jps utilities could not be found on any of the discovered java installations. The easiest way to fix this is to place an OpenJDK in any of the default search paths or to include the location of the OpenJDK in the additional search paths.

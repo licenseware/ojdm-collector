@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/rs/zerolog"
 )
 
 func getJavaBinaryPath(basePath string) (string, error) {
@@ -111,23 +113,24 @@ func parseJavaVersionOutput(output string) JavaInfoRunningProcs {
 	}
 }
 
-func GetJavaVersionInfos(javaBasePaths []string) []JavaInfoRunningProcs {
+func GetJavaVersionInfos(javaBasePaths []string, log *zerolog.Logger) []JavaInfoRunningProcs {
 	var versionInfos []JavaInfoRunningProcs
 	for _, basePath := range javaBasePaths {
 		javaBinPath, err := getJavaBinaryPath(basePath)
 		if err != nil {
-			fmt.Printf("Skipping %s: %v\n", basePath, err)
+			log.Warn().Err(err).Str("base_path", basePath).Msg("skipping installation, java binary not found")
 			continue
 		}
 		output, err := executeJavaBinary(javaBinPath)
 		if err != nil {
-			fmt.Printf("Skipping %s: could not run %s: %v\n", basePath, javaBinPath, err)
+			log.Warn().Err(err).Str("base_path", basePath).Str("java_bin_path", javaBinPath).
+				Msg("skipping installation, java binary could not be executed")
 			continue
 		}
 		info := parseJavaVersionOutput(output)
 		javaDllPath, err := getJavaDLLPath(basePath)
 		if err != nil {
-			fmt.Printf("Error getting Java DLL Path: %v", err)
+			log.Warn().Err(err).Str("base_path", basePath).Msg("vm shared library not found")
 		} else {
 
 			info.DynLibBinPath = javaDllPath
@@ -144,6 +147,8 @@ func GetJavaVersionInfos(javaBasePaths []string) []JavaInfoRunningProcs {
 		}
 		info.HostName = getHostName()
 		info.HostLogicalProcessors = runtime.NumCPU()
+		log.Debug().Str("java_home", info.JavaHome).Str("java_version", info.JavaVersion).
+			Bool("is_jdk", info.IsJDK).Msg("collected java installation")
 		versionInfos = append(versionInfos, info)
 	}
 	return versionInfos

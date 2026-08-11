@@ -37,17 +37,27 @@ function Invoke-Native([scriptblock]$block) {
     try { & $block } finally { $ErrorActionPreference = $previous }
 }
 
-# ---------------------------------------------------------------- JDK 21
-$jdk21 = 'C:\Program Files\Java\jdk-21'
-if (-not (Test-Path (Join-Path $jdk21 'bin\java.exe'))) {
-    $zip = Join-Path $work 'jdk21.zip'
-    Invoke-WebRequest -UseBasicParsing -OutFile $zip `
-        -Uri 'https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk'
-    $stage = Join-Path $work 'jdk21'
+# ---------------------------------------------------------------- installs
+# Self-contained: the VM may have been rebuilt, rebooted or cleaned between
+# runs, so never assume an earlier script left an installation behind.
+function Install-Temurin([string]$target, [string]$uri, [string]$stageName) {
+    if (Test-Path (Join-Path $target 'bin\java.exe')) { return }
+    $zip = Join-Path $work "$stageName.zip"
+    Invoke-WebRequest -UseBasicParsing -OutFile $zip -Uri $uri
+    $stage = Join-Path $work $stageName
     Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
     Expand-Archive -Path $zip -DestinationPath $stage -Force
-    Move-Item (Get-ChildItem -Directory $stage | Select-Object -First 1).FullName $jdk21
+    New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+    Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue
+    Move-Item (Get-ChildItem -Directory $stage | Select-Object -First 1).FullName $target
 }
+
+$jre8 = 'C:\Program Files\Java\jre1.8.0_481'
+Install-Temurin $jre8 'https://api.adoptium.net/v3/binary/latest/8/ga/windows/x64/jre/hotspot/normal/eclipse?project=jdk' 'jre8'
+
+$jdk21 = 'C:\Program Files\Java\jdk-21'
+Install-Temurin $jdk21 'https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk' 'jdk21'
+
 
 # ------------------------------------------------- copies in awkward locations
 $binTools = 'C:\bin-tools\jdk-21'
@@ -97,6 +107,17 @@ Put-Artifact $csv "results/$variant-matrix.csv"
 Put-Artifact $log "results/$variant-matrix.log"
 
 # ---------------------------------------------------------------- assertions
+$logDir = Join-Path (Split-Path $csv) 'logs'
+$debugLog = Join-Path $logDir 'debug.log'
+Write-Output ("DEBUGLOG exists={0} entries={1} archives={2}" -f (Test-Path $debugLog),
+    @(Get-Content $debugLog -ErrorAction SilentlyContinue).Count,
+    @(Get-ChildItem $logDir -Filter 'debug-*.log' -ErrorAction SilentlyContinue).Count)
+if (Test-Path $debugLog) {
+    Put-Artifact $debugLog "results/$variant-debug.log"
+    Get-Content $debugLog | Where-Object { $_ -match '"level":"warn"' } | Select-Object -First 2 |
+        ForEach-Object { Write-Output "WARNSAMPLE $_" }
+}
+
 $rows = @(Import-Csv $csv)
 Write-Output ("ROWS total={0}" -f $rows.Count)
 foreach ($r in $rows) {
