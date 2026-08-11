@@ -5,14 +5,109 @@ on:
     release:
       types:
           - created
+    push:
+      branches:
+          - main
+    pull_request:
+      branches:
+          - main
 
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  goreleaser:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Verify formatting
+        if: runner.os == 'Linux'
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt required for: $unformatted"
+            exit 1
+          fi
+      - name: Vet
+        run: go vet ./...
+      # The platform branches (windows bin\server and javac.exe, the POSIX
+      # layouts) are compile-time selected, so each is only really covered on
+      # its own runner.
+      - name: Test
+        run: go test ./...
+
+  acceptance-linux:
+    name: acceptance (linux)
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build release candidate
+        run: CGO_ENABLED=0 go build -o /tmp/ojdm-collector .
+      # Installs a real JDK, plants the layouts and failure modes each fix
+      # targets, then asserts the report, the debug log and its rotation.
+      - name: Run acceptance suite
+        run: sudo ./hack/acceptance/linux-acceptance.sh /tmp/ojdm-collector
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-linux
+          path: |
+            /opt/ojdm-acceptance/*.csv
+            /opt/ojdm-acceptance/logs/
+            /opt/ojdm-acceptance/console*.txt
+          if-no-files-found: warn
+
+  acceptance-windows:
+    name: acceptance (windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build release candidate
+        env:
+          CGO_ENABLED: 0
+        run: go build -o C:\ojdm-collector.exe .
+      - name: Run acceptance suite
+        shell: pwsh
+        run: .\hack\acceptance\windows-acceptance.ps1 -Binary C:\ojdm-collector.exe
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-windows
+          path: |
+            C:\ojdm-acceptance\*.csv
+            C:\ojdm-acceptance\logs\
+            C:\ojdm-acceptance\console*.txt
+          if-no-files-found: warn
+
+  goreleaser:
+    if: github.event_name == 'release'
+    needs: [test, acceptance-linux, acceptance-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       -
         name: Checkout

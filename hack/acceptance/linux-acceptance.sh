@@ -92,8 +92,9 @@ results.append(("final entry points the operator at the log",
 
 for description, ok in results:
     print(("PASS " if ok else "FAIL ") + description)
-print("PYCOUNT %d %d" % (sum(1 for _, ok in results if ok), sum(1 for _, ok in results if not ok)))
+sys.exit(1 if any(not ok for _, ok in results) else 0)
 PY
+check "report and log assertions all hold" "$?"
 PYLINE="$(python3 - "$REPORT" "$LOG" <<'PY'
 import csv, json, sys
 print(len(list(csv.DictReader(open(sys.argv[1])))), len([l for l in open(sys.argv[2]) if l.strip()]))
@@ -134,4 +135,7 @@ check "scan continued past the permission failure" \
   "$(grep -q 'jdk-planted' "$WORK/r4.csv" && echo 0 || echo 1)"
 
 chmod 755 /opt/aaa_denied 2>/dev/null
-echo "SUITE pass=$PASS fail=$FAIL (plus the python assertions above)"
+echo "SUITE pass=$PASS fail=$FAIL"
+
+# The exit code is what gates CI; without it a failed assertion reads as success.
+[[ $FAIL -eq 0 ]] || exit 1

@@ -58,10 +58,14 @@ SAS="$(az storage container generate-sas --name "$CONTAINER" --account-name "$ST
   --account-key "$KEY" --permissions rwl --expiry "$EXPIRY" --https-only -o tsv)"
 SAS_BASE="https://${STORAGE}.blob.core.windows.net/${CONTAINER}?${SAS}"
 
-echo "==> uploading collector binary"
+echo "==> uploading collector binary and the acceptance suite"
 az storage blob upload --account-name "$STORAGE" --account-key "$KEY" \
   --container-name "$CONTAINER" --name "ojdm-$VARIANT.exe" \
   --file "$OUT_DIR/ojdm-$VARIANT.exe" --overwrite --output none
+# The VM-side scripts fetch the suite by name; keep it in step with the repo.
+az storage blob upload --account-name "$STORAGE" --account-key "$KEY" \
+  --container-name "$CONTAINER" --name "windows-acceptance.ps1" \
+  --file "$REPO_ROOT/hack/acceptance/windows-acceptance.ps1" --overwrite --output none
 
 if ! az vm show --resource-group "$RG" --name "$VM" --output none 2>/dev/null; then
   echo "==> creating VM $VM (no inbound rules; outbound only)"
