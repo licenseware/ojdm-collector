@@ -2,6 +2,7 @@ package ojdmcollector
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 
@@ -98,8 +99,11 @@ func darwinSearchPaths(homeDir string) []string {
 		"/opt", // includes /opt/homebrew, the arm64 prefix
 	}
 
+	// path.Join, not filepath.Join: these are macOS paths whatever host the
+	// tests compile on, and filepath.Join would separate them with a backslash
+	// when the unit tests run on the windows runner.
 	if homeDir != "" {
-		paths = append(paths, filepath.Join(homeDir, "Library", "Java"))
+		paths = append(paths, path.Join(homeDir, "Library", "Java"))
 	}
 
 	return paths
