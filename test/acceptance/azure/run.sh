@@ -1,28 +1,27 @@
 #!/usr/bin/env bash
-# End-to-end Windows reproduction for the "blank CSV" collector bug, driven
-# entirely through the Azure control plane: no RDP, no inbound NSG rules.
+# Runs the acceptance suite on a real Windows host in Azure, driven entirely
+# through the control plane: no RDP, no inbound NSG rules.
 #
-#   ./run-azure-repro.sh buggy    # before the fix  -> expect VERDICT=REPRODUCED
-#   ./run-azure-repro.sh fixed    # after the fix   -> expect VERDICT=NOT_REPRODUCED
-#   ./run-azure-repro.sh --destroy
+#   ./run.sh rc1          # label for this run's artifacts
+#   ./run.sh --destroy    # drop the resource group when finished
 #
-# Whatever is in the working tree right now is what gets built and shipped; the
-# argument is only the label used for artifact and result filenames.
+# The collector and the suite are compiled here and uploaded, so the VM needs
+# no Go toolchain. Results come back to ./out/results/.
 
 set -euo pipefail
 
-RG="${OJDM_RG:-ojdm-repro-rg}"
+RG="${OJDM_RG:-ojdm-acceptance-rg}"
 LOCATION="${OJDM_LOCATION:-westeurope}"
-VM="${OJDM_VM:-ojdm-repro}"
+VM="${OJDM_VM:-ojdm-acceptance}"
 VM_SIZE="${OJDM_VM_SIZE:-Standard_B2s}"
 IMAGE="${OJDM_IMAGE:-MicrosoftWindowsServer:WindowsServer:2025-datacenter-azure-edition:latest}"
 ADMIN_USER="${OJDM_ADMIN_USER:-ojdmadmin}"
 CONTAINER=artifacts
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 OUT_DIR="$SCRIPT_DIR/out"
-GO="${GO:-$HOME/.nix-profile/bin/go}"
+GO="${GO:-go}"
 
 if [[ "${1:-}" == "--destroy" ]]; then
   echo "==> deleting resource group $RG"
@@ -36,14 +35,22 @@ if [[ -z "$VARIANT" ]]; then
   exit 2
 fi
 
+if ! command -v "$GO" >/dev/null 2>&1; then
+  echo "go toolchain not found; install it or set GO=/path/to/go" >&2
+  exit 1
+fi
+
 # Storage account names are global, lowercase, <=24 chars.
 STORAGE="${OJDM_STORAGE:-ojdm$(az account show --query id -o tsv | tr -d '-' | cut -c1-16)}"
 
-echo "==> building windows/amd64 collector (label: $VARIANT)"
+echo "==> building the collector and the suite for windows/amd64"
 mkdir -p "$OUT_DIR"
-(cd "$REPO_ROOT" && GOOS=windows GOARCH=amd64 "$GO" build -o "$OUT_DIR/ojdm-$VARIANT.exe" .)
+( cd "$REPO_ROOT" && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 "$GO" build \
+    -o "$OUT_DIR/ojdm-collector-$VARIANT.exe" . )
+( cd "$REPO_ROOT" && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 "$GO" test -tags acceptance -c \
+    -o "$OUT_DIR/acceptance-$VARIANT.test.exe" ./test/acceptance/ )
 
-echo "==> ensuring resource group + storage"
+echo "==> ensuring resource group and storage"
 az group create --name "$RG" --location "$LOCATION" --output none
 az storage account create --name "$STORAGE" --resource-group "$RG" --location "$LOCATION" \
   --sku Standard_LRS --kind StorageV2 --min-tls-version TLS1_2 --output none
@@ -58,14 +65,15 @@ SAS="$(az storage container generate-sas --name "$CONTAINER" --account-name "$ST
   --account-key "$KEY" --permissions rwl --expiry "$EXPIRY" --https-only -o tsv)"
 SAS_BASE="https://${STORAGE}.blob.core.windows.net/${CONTAINER}?${SAS}"
 
-echo "==> uploading collector binary and the acceptance suite"
-az storage blob upload --account-name "$STORAGE" --account-key "$KEY" \
-  --container-name "$CONTAINER" --name "ojdm-$VARIANT.exe" \
-  --file "$OUT_DIR/ojdm-$VARIANT.exe" --overwrite --output none
-# The VM-side scripts fetch the suite by name; keep it in step with the repo.
-az storage blob upload --account-name "$STORAGE" --account-key "$KEY" \
-  --container-name "$CONTAINER" --name "windows-acceptance.ps1" \
-  --file "$REPO_ROOT/hack/acceptance/windows-acceptance.ps1" --overwrite --output none
+upload() { # upload <local-file> <blob-name>
+  az storage blob upload --account-name "$STORAGE" --account-key "$KEY" \
+    --container-name "$CONTAINER" --name "$2" --file "$1" --overwrite --output none
+}
+
+echo "==> uploading artifacts"
+upload "$OUT_DIR/ojdm-collector-$VARIANT.exe" "ojdm-collector-$VARIANT.exe"
+upload "$OUT_DIR/acceptance-$VARIANT.test.exe" "acceptance-$VARIANT.test.exe"
+upload "$SCRIPT_DIR/../plant_windows.ps1" "plant_windows.ps1"
 
 if ! az vm show --resource-group "$RG" --name "$VM" --output none 2>/dev/null; then
   echo "==> creating VM $VM (no inbound rules; outbound only)"
@@ -76,24 +84,30 @@ if ! az vm show --resource-group "$RG" --name "$VM" --output none 2>/dev/null; t
   echo "    admin password (not needed for this run): $ADMIN_PASS"
 fi
 
-echo "==> running repro on the VM (several minutes; downloads a JRE + 3 scans)"
-PS_SCRIPT="${OJDM_SCRIPT:-$SCRIPT_DIR/repro.ps1}"
-RENDERED="$OUT_DIR/$(basename "${PS_SCRIPT%.ps1}")-$VARIANT.ps1"
+echo "==> running the acceptance suite on the VM (several minutes on a cold host)"
+RENDERED="$OUT_DIR/run-suite-$VARIANT.ps1"
 # A SAS token is a query string full of '&', which sed expands to the matched
 # text in the replacement half. Escape it, or the VM gets a token-less URL and
 # the storage account rejects the request as anonymous access.
 SAS_ESCAPED="$(printf '%s' "$SAS_BASE" | sed -e 's/[&|\\]/\\&/g')"
 sed -e "s|__ARTIFACT_SAS__|${SAS_ESCAPED}|" -e "s|__VARIANT__|${VARIANT}|" \
-  "$PS_SCRIPT" > "$RENDERED"
+  "$SCRIPT_DIR/run-suite.ps1" > "$RENDERED"
 
-az vm run-command invoke --resource-group "$RG" --name "$VM" \
+RESULT="$(az vm run-command invoke --resource-group "$RG" --name "$VM" \
   --command-id RunPowerShellScript --scripts "@$RENDERED" \
-  --query 'value[].message' -o tsv | sed 's/^/    /'
+  --query 'value[].message' -o tsv)"
+echo "$RESULT" | sed 's/^/    /'
 
-echo "==> downloading result CSVs and logs"
+echo "==> downloading results"
 az storage blob download-batch --account-name "$STORAGE" --account-key "$KEY" \
-  --source "$CONTAINER" --pattern "results/$VARIANT-*" --destination "$OUT_DIR" --output none
-find "$OUT_DIR/results" -name "$VARIANT-*" -printf '    %p (%s bytes)\n' 2>/dev/null || true
+  --source "$CONTAINER" --pattern "results/$VARIANT-*" --destination "$OUT_DIR" --output none || true
 
 echo
-echo "run '$0 --destroy' when done to drop the resource group."
+echo "run '$0 --destroy' when finished to drop the resource group."
+
+# The suite's own exit code decides this script's, so it can gate anything.
+if ! grep -q 'SUITEEXIT 0' <<<"$RESULT"; then
+  echo "acceptance FAILED on windows" >&2
+  exit 1
+fi
+echo "acceptance passed on windows"

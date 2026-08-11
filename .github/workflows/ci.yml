@@ -26,9 +26,9 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Verify formatting
@@ -52,55 +52,49 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Build release candidate
         run: CGO_ENABLED=0 go build -o /tmp/ojdm-collector .
-      # Installs a real JDK, plants the layouts and failure modes each fix
-      # targets, then asserts the report, the debug log and its rotation.
+      # Provisioning only: makes a JDK exist and reports where it landed.
+      - name: Provision java
+        run: |
+          eval "$(sudo ./test/acceptance/plant_linux.sh)"
+          echo "OJDM_JDK=$OJDM_JDK" >> "$GITHUB_ENV"
+      # The suite plants the layouts and failure modes each fix targets, then
+      # asserts the report, the debug log and its rotation. It needs root to
+      # write the system locations the collector scans by default.
       - name: Run acceptance suite
-        run: sudo ./hack/acceptance/linux-acceptance.sh /tmp/ojdm-collector
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: acceptance-linux
-          path: |
-            /opt/ojdm-acceptance/*.csv
-            /opt/ojdm-acceptance/logs/
-            /opt/ojdm-acceptance/console*.txt
-          if-no-files-found: warn
+        run: |
+          sudo -E env "PATH=$PATH" OJDM_BINARY=/tmp/ojdm-collector OJDM_JDK="$OJDM_JDK" \
+            go test -tags acceptance -v -timeout 20m ./test/acceptance/
 
   acceptance-windows:
     name: acceptance (windows)
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Build release candidate
         env:
           CGO_ENABLED: 0
         run: go build -o C:\ojdm-collector.exe .
+      # Provisioning and the run share one step: the environment the planting
+      # script emits lives in the shell, and steps do not share a shell.
       - name: Run acceptance suite
         shell: pwsh
-        run: .\hack\acceptance\windows-acceptance.ps1 -Binary C:\ojdm-collector.exe
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: acceptance-windows
-          path: |
-            C:\ojdm-acceptance\*.csv
-            C:\ojdm-acceptance\logs\
-            C:\ojdm-acceptance\console*.txt
-          if-no-files-found: warn
+        env:
+          OJDM_BINARY: C:\ojdm-collector.exe
+        run: |
+          .\test\acceptance\plant_windows.ps1 | Invoke-Expression
+          go test -tags acceptance -v -timeout 20m .\test\acceptance\
 
   goreleaser:
     if: github.event_name == 'release'
@@ -111,12 +105,12 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       -
         name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
       -
         name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
