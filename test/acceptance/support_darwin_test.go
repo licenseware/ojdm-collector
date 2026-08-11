@@ -1,4 +1,4 @@
-//go:build acceptance && !windows
+//go:build acceptance && darwin
 
 package acceptance
 
@@ -10,33 +10,25 @@ import (
 	"testing"
 )
 
-// scanRoot is a writable location for planted installations.
-func scanRoot() string { return "/opt" }
+// scanRoot is a writable location for planted installations. /Applications is
+// owned by the admin group, so the suite plants there without privileges, and
+// it is one of the default search paths.
+func scanRoot() string { return "/Applications" }
 
 // searchableSystemDir is covered by the default search paths, so anything
 // planted here is met without passing extra flags.
-func searchableSystemDir() string { return "/opt" }
+func searchableSystemDir() string { return "/Applications" }
 
 func removeStubbornly(path string) { os.RemoveAll(path) }
 
-// unprivilegedUser returns an account that cannot read root-owned directories,
-// which is the only way to exercise the permission branch: root reads
-// everything, so running the suite as root would silently skip it.
-func unprivilegedUser() string {
-	if name := os.Getenv("SUDO_USER"); name != "" && name != "root" {
-		return name
-	}
-
-	homes, err := os.ReadDir("/home")
-	if err != nil || len(homes) == 0 {
-		return ""
-	}
-	return homes[0].Name()
-}
-
 // A directory the scan may not read must be reported with its cause and must
-// not stop the scan.
+// not stop the scan. Unlike the Linux suite this needs no privilege dropping:
+// the macOS job already runs unprivileged, so the permission bits bite.
 func TestPermissionFailureIsFlaggedAndSurvived(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses permission bits; run the macos suite unprivileged")
+	}
+
 	jdk := requireEnv(t, envJDK)
 	binary := requireEnv(t, envBinary)
 
@@ -52,34 +44,19 @@ func TestPermissionFailureIsFlaggedAndSurvived(t *testing.T) {
 		os.RemoveAll(denied)
 	})
 
-	// The report and log must be writable by whoever runs the collector.
 	workDir, err := os.MkdirTemp("", "ojdm-unpriv")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.RemoveAll(workDir) })
-	if err := os.Chmod(workDir, 0o777); err != nil {
-		t.Fatal(err)
-	}
 
 	reportPath := filepath.Join(workDir, "report.csv")
 	logPath := filepath.Join(workDir, "logs", "debug.log")
-	args := []string{
-		"-search-paths=" + denied + "," + jdk,
-		"-output-path=" + reportPath,
-	}
 
-	var cmd *exec.Cmd
-	if os.Geteuid() == 0 {
-		user := unprivilegedUser()
-		if user == "" {
-			t.Skip("no unprivileged account available to exercise the permission branch")
-		}
-		cmd = exec.Command("su", user, "-c", binary+" "+strings.Join(args, " "))
-	} else {
-		cmd = exec.Command(binary, args...)
-	}
-
+	cmd := exec.Command(binary,
+		"-search-paths="+denied+","+jdk,
+		"-output-path="+reportPath,
+	)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("collector failed: %v\n%s", err, output)
 	}

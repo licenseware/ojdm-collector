@@ -1,6 +1,9 @@
 package ojdmcollector
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestIsInTargetSubfolderHandlesWindowsPaths(t *testing.T) {
 	if !isInTargetSubfolder(`C:\Program Files\Java\jdk-21\bin\java.exe`) {
@@ -36,5 +39,52 @@ func TestProcessPathUsesLastBinSegment(t *testing.T) {
 		if got := processPath(input); got != want {
 			t.Errorf("processPath(%q) = %q, want %q", input, got, want)
 		}
+	}
+}
+
+// The canonical macOS JDK location is /Library/Java/JavaVirtualMachines, where
+// /usr/libexec/java_home, the Homebrew casks and the Temurin installer all put
+// their installations. Searching only /Applications means a stock Mac reports
+// nothing at all.
+func TestDarwinSearchPathsCoverTheCanonicalLocations(t *testing.T) {
+	got := darwinSearchPaths("/Users/tester")
+
+	want := []string{
+		"/Library/Java/JavaVirtualMachines",
+		"/Applications",
+		"/usr/local",
+		"/opt",
+		"/Users/tester/Library/Java",
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("darwinSearchPaths() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("darwinSearchPaths()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// An empty home directory must not contribute a bare "Library/Java", which
+// would be resolved relative to the working directory and scan something
+// arbitrary.
+func TestDarwinSearchPathsOmitsHomeWhenUnknown(t *testing.T) {
+	for _, path := range darwinSearchPaths("") {
+		if strings.Contains(path, "Library/Java") && !strings.HasPrefix(path, "/Library") {
+			t.Errorf("unexpected home-relative path %q", path)
+		}
+	}
+}
+
+// A JDK on macOS lives inside an .app-style bundle, so JavaHome is the
+// Contents/Home directory rather than the .jdk directory above it.
+func TestProcessPathResolvesDarwinBundleLayout(t *testing.T) {
+	got := processPath("/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java")
+	want := "/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home"
+
+	if got != want {
+		t.Fatalf("processPath() = %q, want %q", got, want)
 	}
 }

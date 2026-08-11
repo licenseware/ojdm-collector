@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -39,8 +40,12 @@ func getJavaSharedLibPaths(searchPaths []string, log *zerolog.Logger) []string {
 
 func walkForJavaFiles(searchPath string, javaSharedLibFilenames []string, javaFilesMap map[string]bool, log *zerolog.Logger) []string {
 	var javaFiles []string
+	var entries int
+	started := time.Now()
 
 	filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
+		entries++
+
 		if err != nil {
 			// Returning the error aborts the walk for this whole search root,
 			// silently dropping every installation that sorts after the failing
@@ -66,6 +71,13 @@ func walkForJavaFiles(searchPath string, javaSharedLibFilenames []string, javaFi
 
 		return nil
 	})
+
+	log.Info().
+		Str("search_path", searchPath).
+		Int("entries", entries).
+		Int("found", len(javaFiles)).
+		Int64("duration_ms", time.Since(started).Milliseconds()).
+		Msg("finished walking search path")
 
 	return javaFiles
 }

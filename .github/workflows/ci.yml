@@ -1,6 +1,13 @@
 # https://goreleaser.com/customization/builds/
 name: ci
 
+concurrency:
+  # Quoted as a whole rather than escaping the colon-space inside a plain
+  # scalar: github expressions have no backslash escaping, so 'chore(main):\ release'
+  # would be compared literally and never match.
+  cancel-in-progress: "${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'chore(main): release')) }}"
+  group: ci-${{ github.ref_name }}-${{ github.event_name }}
+
 on:
   push:
     branches:
@@ -8,6 +15,7 @@ on:
   pull_request:
     branches:
       - main
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -15,6 +23,7 @@ permissions:
 
 jobs:
   test:
+    if: "!startsWith(github.event.head_commit.message, 'chore(main): release')"
     name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -45,6 +54,7 @@ jobs:
         run: go test ./...
 
   acceptance-linux:
+    if: "!startsWith(github.event.head_commit.message, 'chore(main): release')"
     name: acceptance (linux)
     runs-on: ubuntu-latest
     steps:
@@ -70,6 +80,7 @@ jobs:
             go test -tags acceptance -v -timeout 20m ./test/acceptance/
 
   acceptance-windows:
+    if: "!startsWith(github.event.head_commit.message, 'chore(main): release')"
     name: acceptance (windows)
     runs-on: windows-latest
     steps:
@@ -92,6 +103,32 @@ jobs:
         run: |
           .\test\acceptance\plant_windows.ps1 | Invoke-Expression
           go test -tags acceptance -v -timeout 20m .\test\acceptance\
+
+  acceptance-macos:
+    if: "!startsWith(github.event.head_commit.message, 'chore(main): release')"
+    name: acceptance (macos)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+      - name: Build release candidate
+        run: CGO_ENABLED=0 go build -o /tmp/ojdm-collector .
+      # Provisioning only: makes a JDK exist and reports where it landed.
+      - name: Provision java
+        run: |
+          eval "$(./test/acceptance/plant_darwin.sh)"
+          echo "OJDM_JDK=$OJDM_JDK" >> "$GITHUB_ENV"
+      # No sudo, unlike the linux job: the suite plants into /Applications,
+      # which the runner account owns, and the permission test only bites when
+      # the run is unprivileged.
+      - name: Run acceptance suite
+        env:
+          OJDM_BINARY: /tmp/ojdm-collector
+        run: go test -tags acceptance -v -timeout 20m ./test/acceptance/
 
   # Runs on every PR, not gated on paths: the release config breaks rarely but
   # breaks at exactly the moment you are trying to cut a release.
@@ -148,7 +185,7 @@ jobs:
           manifest-file: .release-please-manifest.json
 
   build:
-    needs: [test, acceptance-linux, acceptance-windows, release-please]
+    needs: [release-please]
     if: needs.release-please.outputs.releases_created == 'true'
     runs-on: ubuntu-latest
     permissions:
