@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/rs/zerolog"
 )
 
-func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs) {
+func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs, log *zerolog.Logger) error {
 
-	fmt.Println("Creating csv report...")
+	log.Info().Str("path", csvPath).Msg("creating csv report")
 
 	file, err := os.Create(csvPath)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("creating csv report: %w", err)
 	}
 	defer file.Close()
 
@@ -41,7 +43,9 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs) {
 		"HostLogicalProcessors",
 	}
 
-	writer.Write(header)
+	if err := writer.Write(header); err != nil {
+		return fmt.Errorf("writing csv header: %w", err)
+	}
 
 	for _, value := range javaFullInfo {
 
@@ -66,12 +70,12 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs) {
 			strconv.Itoa(value.HostLogicalProcessors),
 		}
 
-		err := writer.Write(stringData)
-		if err != nil {
-			panic(err)
+		if err := writer.Write(stringData); err != nil {
+			return fmt.Errorf("writing csv row: %w", err)
 		}
 	}
 
-	fmt.Println("Done!")
+	log.Info().Int("rows", len(javaFullInfo)).Msg("csv report written")
 
+	return nil
 }

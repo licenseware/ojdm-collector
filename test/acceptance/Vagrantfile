@@ -1,0 +1,33 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Throwaway Linux guests for the acceptance suite. Two distributions on
+# purpose: the deb and rpm families lay their JDKs out differently and package
+# different default JDK versions, and the collector has to cope with both.
+#
+#   cd test/acceptance
+#   vagrant up
+#   ./run-linux.sh debian
+#
+# The guests are disposable. The suite installs packages and writes to /opt,
+# which is exactly why it must not run on a workstation.
+
+Vagrant.configure("2") do |config|
+  config.vm.define "debian", primary: true do |debian|
+    debian.vm.box = "generic/debian12"
+  end
+
+  config.vm.define "rocky" do |rocky|
+    rocky.vm.box = "generic/rocky9"
+  end
+
+  # Nothing is shared into the guests: run-linux.sh uploads the two artifacts
+  # it needs, which keeps the guest independent of the host's filesystem and
+  # of any provider specific synced folder support.
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider "libvirt" do |libvirt|
+    libvirt.memory = 2048
+    libvirt.cpus = 2
+  end
+end

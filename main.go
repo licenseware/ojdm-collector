@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"ojdmcollector/internal/logging"
 	ojdmc "ojdmcollector/ojdmcollector"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -15,6 +17,8 @@ func main() {
 	csvReportPath := flag.String("output-path", "report.csv", "Optional: Path to csv report.")
 	searchPaths := flag.String("search-paths", "", "Optional: List of paths separated by comma where to search for java info.")
 	searchPathsFile := flag.String("search-paths-file", "", "Optional: Path to a file containing additional search paths, one path per line.")
+	logPath := flag.String("log-path", "", "Optional: Path to the debug log. Defaults to a logs/ directory beside the csv report.")
+	logLevel := flag.String("log-level", "info", "Optional: Console verbosity (debug, info, warn, error). The debug log always records everything.")
 
 	flag.Usage = func() {
 		fmt.Println()
@@ -26,6 +30,7 @@ func main() {
 		fmt.Println("     $ ojdm-collector -search-paths=/home,/oracle,/opt")
 		fmt.Println("     $ ojdm-collector -search-paths-file=/path/to/search-paths.txt")
 		fmt.Println("     $ ojdm-collector -search-paths=/home,/usr,/opt -output-path=/path/to/csvreport.csv")
+		fmt.Println("     $ ojdm-collector -log-path=/path/to/debug.log -log-level=debug")
 		fmt.Println()
 		flag.PrintDefaults()
 	}
@@ -37,22 +42,48 @@ func main() {
 		return
 	}
 
+	resolvedLogPath := *logPath
+	if resolvedLogPath == "" {
+		resolvedLogPath = logging.DefaultLogPath(*csvReportPath)
+	}
+
+	logFile, archived, err := logging.OpenFileSink(resolvedLogPath)
+	if err != nil {
+		fmt.Println("Error preparing the debug log:", err)
+		return
+	}
+	defer logFile.Close()
+
+	log := logging.New(*logLevel, true, logFile)
+	log.Info().
+		Str("log_path", resolvedLogPath).
+		Str("csv_report_path", *csvReportPath).
+		Str("os", runtime.GOOS).
+		Str("arch", runtime.GOARCH).
+		Strs("args", os.Args[1:]).
+		Msg("ojdm collector starting")
+	if archived != "" {
+		log.Info().Str("archived_log", archived).Msg("rotated previous debug log")
+	}
+
 	trimSpaths := parseSearchPaths(*searchPaths)
 
 	fileSearchPaths, err := parseSearchPathsFile(*searchPathsFile)
 	if err != nil {
-		fmt.Println("Error reading search paths file:", err)
+		log.Error().Err(err).Str("path", *searchPathsFile).Msg("could not read search paths file")
 		return
 	}
 	trimSpaths = append(trimSpaths, fileSearchPaths...)
 
-	javaInfoRunningProcs := ojdmc.CollectJavaInfo(trimSpaths)
+	javaInfoRunningProcs := ojdmc.CollectJavaInfo(trimSpaths, log)
 
-	fmt.Println("\nJava Info with Running Processes:")
-	// ojdmc.Println(javaInfoRunningProcs)
+	if err := ojdmc.CreateCSVReport(*csvReportPath, javaInfoRunningProcs, log); err != nil {
+		log.Error().Err(err).Str("path", *csvReportPath).Msg("could not write csv report")
+		return
+	}
 
-	ojdmc.CreateCSVReport(*csvReportPath, javaInfoRunningProcs)
-
+	log.Info().Str("csv_report_path", *csvReportPath).Str("log_path", resolvedLogPath).
+		Msg("done, attach the log file if support asks for it")
 }
 
 func parseSearchPaths(searchPaths string) []string {

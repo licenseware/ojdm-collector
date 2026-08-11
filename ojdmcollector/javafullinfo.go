@@ -1,17 +1,18 @@
 package ojdmcollector
 
 import (
-	"fmt"
 	"sort"
+
+	"github.com/rs/zerolog"
 )
 
-func CollectJavaInfo(searchPaths []string) []JavaInfoRunningProcs {
+func CollectJavaInfo(searchPaths []string, log *zerolog.Logger) []JavaInfoRunningProcs {
 
 	var javaInfos []JavaInfoRunningProcs
 	var versionInfos []JavaInfoRunningProcs
-	javaBasePAths := getJavaSharedLibPaths(searchPaths)
+	javaBasePAths := getJavaSharedLibPaths(searchPaths, log)
 
-	versionInfos = GetJavaVersionInfos(javaBasePAths)
+	versionInfos = GetJavaVersionInfos(javaBasePAths, log)
 	sort.Slice(versionInfos, func(i, j int) bool {
 		return versionInfos[i].JavaVersion > versionInfos[j].JavaVersion
 	})
@@ -25,13 +26,16 @@ func CollectJavaInfo(searchPaths []string) []JavaInfoRunningProcs {
 	}
 
 	if toolFound != nil {
-		javaProcesses := GetJavaProcessInfo(toolFound.JavaHome)
+		javaProcesses := GetJavaProcessInfo(toolFound.JavaHome, log)
 		javaInfos = append(javaInfos, javaProcesses...)
 	} else {
-		fmt.Println("Did not find the jinfo and jps binaries, running processes will not be identified.")
+		log.Warn().Msg("did not find the jinfo and jps binaries, running processes will not be identified")
 	}
 
 	mergedJavaInfo := mergeSlices(javaInfos, versionInfos)
+
+	log.Info().Int("installations", len(versionInfos)).Int("running_processes", len(javaInfos)).
+		Int("rows", len(mergedJavaInfo)).Msg("collection complete")
 
 	return mergedJavaInfo
 }

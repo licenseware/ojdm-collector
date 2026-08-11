@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/rs/zerolog"
 )
 
 // makeUnstatablePath nests directories until the absolute path exceeds
@@ -80,7 +82,8 @@ func TestWalkForJavaFilesContinuesAfterStatError(t *testing.T) {
 
 	want := writeJavaBinary(t, root, "zzz_java")
 
-	got := walkForJavaFiles(root, getJavaSharedLibFileName(), map[string]bool{})
+	log := zerolog.Nop()
+	got := walkForJavaFiles(root, getJavaSharedLibFileName(), map[string]bool{}, &log)
 
 	if len(got) != 1 || got[0] != want {
 		t.Fatalf("walkForJavaFiles() = %v, want [%s]", got, want)
@@ -108,7 +111,8 @@ func TestWalkForJavaFilesContinuesAfterPermissionError(t *testing.T) {
 
 	want := writeJavaBinary(t, root, "zzz_java")
 
-	got := walkForJavaFiles(root, getJavaSharedLibFileName(), map[string]bool{})
+	log := zerolog.Nop()
+	got := walkForJavaFiles(root, getJavaSharedLibFileName(), map[string]bool{}, &log)
 
 	if len(got) != 1 || got[0] != want {
 		t.Fatalf("walkForJavaFiles() = %v, want [%s]", got, want)

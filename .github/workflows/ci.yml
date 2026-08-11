@@ -1,0 +1,122 @@
+# https://goreleaser.com/customization/builds/
+name: goreleaser
+
+on:
+    release:
+      types:
+          - created
+    push:
+      branches:
+          - main
+    pull_request:
+      branches:
+          - main
+
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Verify formatting
+        if: runner.os == 'Linux'
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt required for: $unformatted"
+            exit 1
+          fi
+      - name: Vet
+        run: go vet ./...
+      # The platform branches (windows bin\server and javac.exe, the POSIX
+      # layouts) are compile-time selected, so each is only really covered on
+      # its own runner.
+      - name: Test
+        run: go test ./...
+
+  acceptance-linux:
+    name: acceptance (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Build release candidate
+        run: CGO_ENABLED=0 go build -o /tmp/ojdm-collector .
+      # Provisioning only: makes a JDK exist and reports where it landed.
+      - name: Provision java
+        run: |
+          eval "$(sudo ./test/acceptance/plant_linux.sh)"
+          echo "OJDM_JDK=$OJDM_JDK" >> "$GITHUB_ENV"
+      # The suite plants the layouts and failure modes each fix targets, then
+      # asserts the report, the debug log and its rotation. It needs root to
+      # write the system locations the collector scans by default.
+      - name: Run acceptance suite
+        run: |
+          sudo -E env "PATH=$PATH" OJDM_BINARY=/tmp/ojdm-collector OJDM_JDK="$OJDM_JDK" \
+            go test -tags acceptance -v -timeout 20m ./test/acceptance/
+
+  acceptance-windows:
+    name: acceptance (windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Build release candidate
+        env:
+          CGO_ENABLED: 0
+        run: go build -o C:\ojdm-collector.exe .
+      # Provisioning and the run share one step: the environment the planting
+      # script emits lives in the shell, and steps do not share a shell.
+      - name: Run acceptance suite
+        shell: pwsh
+        env:
+          OJDM_BINARY: C:\ojdm-collector.exe
+        run: |
+          .\test\acceptance\plant_windows.ps1 | Invoke-Expression
+          go test -tags acceptance -v -timeout 20m .\test\acceptance\
+
+  goreleaser:
+    if: github.event_name == 'release'
+    needs: [test, acceptance-linux, acceptance-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      -
+        name: Set up Go
+        uses: actions/setup-go@v7
+      -
+        name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

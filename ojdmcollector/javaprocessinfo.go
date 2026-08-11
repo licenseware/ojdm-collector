@@ -1,11 +1,12 @@
 package ojdmcollector
 
 import (
-	"fmt"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 type JavaProcess struct {
@@ -87,19 +88,22 @@ func updateJavaInfoWithJinfoData(jinfoOutput string, javaProcess JavaProcess) Ja
 	return javaInfo
 }
 
-func GetJavaProcessInfo(javaHome string) []JavaInfoRunningProcs {
+func GetJavaProcessInfo(javaHome string, log *zerolog.Logger) []JavaInfoRunningProcs {
 	var runningProcsJavaInfos []JavaInfoRunningProcs
 
 	jpsOutput, err := runJps(javaHome)
 	if err != nil {
-		fmt.Println("Could not run jps utility to identify running JVM instances")
+		log.Warn().Err(err).Str("java_home", javaHome).
+			Msg("could not run jps, running jvm instances will not be identified")
 		return runningProcsJavaInfos
 	}
 
+	log.Debug().Int("count", len(jpsOutput)).Msg("jps reported running jvm instances")
 	for _, process := range jpsOutput {
 		jinfoOutput, err := runJinfo(javaHome, process)
 		if err != nil {
-			continue // Optionally handle or log the error
+			log.Warn().Err(err).Str("pid", process.ProcessID).Msg("could not inspect running jvm with jinfo")
+			continue
 		}
 		parsedJInfo := updateJavaInfoWithJinfoData(jinfoOutput, process)
 		runningProcsJavaInfos = append(runningProcsJavaInfos, parsedJInfo)

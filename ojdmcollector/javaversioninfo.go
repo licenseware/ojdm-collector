@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/rs/zerolog"
 )
 
 func getJavaBinaryPath(basePath string) (string, error) {
@@ -111,25 +113,32 @@ func parseJavaVersionOutput(output string) JavaInfoRunningProcs {
 	}
 }
 
-func GetJavaVersionInfos(javaBasePaths []string) []JavaInfoRunningProcs {
+func GetJavaVersionInfos(javaBasePaths []string, log *zerolog.Logger) []JavaInfoRunningProcs {
 	var versionInfos []JavaInfoRunningProcs
+	indexByHome := make(map[string]int)
 	for _, basePath := range javaBasePaths {
 		javaBinPath, err := getJavaBinaryPath(basePath)
 		if err != nil {
-			fmt.Printf("Skipping %s: %v\n", basePath, err)
+			log.Warn().Err(err).Str("base_path", basePath).Msg("skipping installation, java binary not found")
 			continue
 		}
 		output, err := executeJavaBinary(javaBinPath)
 		if err != nil {
-			fmt.Printf("Skipping %s: could not run %s: %v\n", basePath, javaBinPath, err)
+			log.Warn().Err(err).Str("base_path", basePath).Str("java_bin_path", javaBinPath).
+				Msg("skipping installation, java binary could not be executed")
 			continue
 		}
 		info := parseJavaVersionOutput(output)
 		javaDllPath, err := getJavaDLLPath(basePath)
+		if err != nil && info.JavaHome != "" && normalizePath(basePath) != info.JavaHome {
+			// A java binary reached through a symlink (/usr/bin/java) yields a
+			// base path that holds no runtime. The home the JVM reports itself
+			// is the authoritative location.
+			javaDllPath, err = getJavaDLLPath(info.JavaHome)
+		}
 		if err != nil {
-			fmt.Printf("Error getting Java DLL Path: %v", err)
+			log.Warn().Err(err).Str("base_path", basePath).Msg("vm shared library not found")
 		} else {
-
 			info.DynLibBinPath = javaDllPath
 		}
 		if checkToolExists(javaBinPath, "jps") && checkToolExists(javaBinPath, "jinfo") {
@@ -144,7 +153,43 @@ func GetJavaVersionInfos(javaBasePaths []string) []JavaInfoRunningProcs {
 		}
 		info.HostName = getHostName()
 		info.HostLogicalProcessors = runtime.NumCPU()
+		log.Debug().Str("java_home", info.JavaHome).Str("java_version", info.JavaVersion).
+			Bool("is_jdk", info.IsJDK).Msg("collected java installation")
+
+		// Several search paths can reach one installation (a symlinked
+		// /usr/bin/java and the real /usr/lib/jvm/... entry). Reporting it once
+		// per route would double count it.
+		key := info.JavaHome
+		if key == "" {
+			key = normalizePath(basePath)
+		}
+		if index, seen := indexByHome[key]; seen {
+			if isRicherRecord(info, versionInfos[index]) {
+				log.Debug().Str("java_home", key).Str("base_path", basePath).
+					Msg("replacing duplicate installation with a more complete record")
+				versionInfos[index] = info
+			} else {
+				log.Debug().Str("java_home", key).Str("base_path", basePath).
+					Msg("skipping duplicate installation")
+			}
+			continue
+		}
+
+		indexByHome[key] = len(versionInfos)
 		versionInfos = append(versionInfos, info)
 	}
 	return versionInfos
+}
+
+// isRicherRecord reports whether candidate describes an installation more
+// completely than existing, deciding which route to keep for a java home that
+// was reached more than once.
+func isRicherRecord(candidate, existing JavaInfoRunningProcs) bool {
+	if (candidate.DynLibBinPath != "") != (existing.DynLibBinPath != "") {
+		return candidate.DynLibBinPath != ""
+	}
+	if candidate.IsJDK != existing.IsJDK {
+		return candidate.IsJDK
+	}
+	return false
 }

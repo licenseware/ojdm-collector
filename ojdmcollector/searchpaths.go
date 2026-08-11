@@ -1,13 +1,14 @@
 package ojdmcollector
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/rs/zerolog"
 )
 
-func getSearchPaths() []string {
+func getSearchPaths(log *zerolog.Logger) []string {
 
 	oracleHomePath := os.Getenv("ORACLE_HOME")
 	paths := []string{}
@@ -20,7 +21,7 @@ func getSearchPaths() []string {
 	case "darwin":
 		macPaths := []string{"/Applications"}
 		paths = append(paths, macPaths...)
-		fmt.Println("MacOS Java Search Paths: ", paths)
+		log.Debug().Str("platform", runtime.GOOS).Strs("paths", paths).Msg("default search paths")
 		return paths
 
 	case "linux":
@@ -39,7 +40,7 @@ func getSearchPaths() []string {
 			localSharePath,
 		}
 		paths = append(paths, linuxPaths...)
-		fmt.Println("Linux Java Search Paths: ", paths)
+		log.Debug().Str("platform", runtime.GOOS).Strs("paths", paths).Msg("default search paths")
 		return paths
 
 	case "windows":
@@ -47,14 +48,14 @@ func getSearchPaths() []string {
 
 		userProfileDir, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Println("Error getting user home directory:", err)
+			log.Warn().Err(err).Msg("could not determine the user home directory")
 			return paths
 		}
 
 		// Get a list of user profiles
 		userProfiles, err := filepath.Glob(filepath.Join(filepath.Dir(userProfileDir), "*"))
 		if err != nil {
-			fmt.Println("Error getting user profiles:", err)
+			log.Warn().Err(err).Msg("could not enumerate user profiles")
 			return paths
 		}
 
@@ -76,11 +77,11 @@ func getSearchPaths() []string {
 		}
 
 		paths = append(paths, winPaths...)
-		fmt.Println("Windows Java Search Paths: ", paths)
+		log.Debug().Str("platform", runtime.GOOS).Strs("paths", paths).Msg("default search paths")
 		return paths
 
 	default:
-		fmt.Println("Default Java Search Paths /")
+		log.Debug().Str("platform", runtime.GOOS).Msg("unknown platform, searching from the filesystem root")
 		return []string{"/"}
 	}
 }

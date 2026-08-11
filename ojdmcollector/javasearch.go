@@ -1,11 +1,12 @@
 package ojdmcollector
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 func getJavaSharedLibFileName() []string {
@@ -19,24 +20,24 @@ func getJavaSharedLibFileName() []string {
 	}
 }
 
-func getJavaSharedLibPaths(searchPaths []string) []string {
+func getJavaSharedLibPaths(searchPaths []string, log *zerolog.Logger) []string {
 	javaSharedLibFilenames := getJavaSharedLibFileName()
 
-	searchPaths = append(searchPaths, getSearchPaths()...)
+	searchPaths = append(searchPaths, getSearchPaths(log)...)
 
-	fmt.Println("Java Search Paths: ", searchPaths)
+	log.Info().Strs("search_paths", searchPaths).Msg("scanning for java installations")
 
 	javaFilesMap := make(map[string]bool)
 	var javaFiles []string
 	for _, searchPath := range searchPaths {
-		javaFiles = append(javaFiles, walkForJavaFiles(searchPath, javaSharedLibFilenames, javaFilesMap)...)
+		javaFiles = append(javaFiles, walkForJavaFiles(searchPath, javaSharedLibFilenames, javaFilesMap, log)...)
 	}
 
-	fmt.Printf("Finished gathering all java related paths!\n")
+	log.Info().Int("count", len(javaFiles)).Msg("finished gathering java related paths")
 	return javaFiles
 }
 
-func walkForJavaFiles(searchPath string, javaSharedLibFilenames []string, javaFilesMap map[string]bool) []string {
+func walkForJavaFiles(searchPath string, javaSharedLibFilenames []string, javaFilesMap map[string]bool, log *zerolog.Logger) []string {
 	var javaFiles []string
 
 	filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
@@ -45,7 +46,8 @@ func walkForJavaFiles(searchPath string, javaSharedLibFilenames []string, javaFi
 			// silently dropping every installation that sorts after the failing
 			// entry. Broken junctions, cloud placeholders and files removed
 			// mid-scan by security agents all reach here, so skip and carry on.
-			fmt.Printf("Skipping %s: %v\n", path, err)
+			log.Warn().Err(err).Str("path", path).Bool("permission_denied", os.IsPermission(err)).
+				Msg("skipping unreadable path")
 			return nil
 		}
 
@@ -54,7 +56,7 @@ func walkForJavaFiles(searchPath string, javaSharedLibFilenames []string, javaFi
 				if info.Name() == javaSharedLibFilename {
 					cleanPath := processPath(path)
 					if _, exists := javaFilesMap[cleanPath]; !exists {
-						fmt.Printf("Found %s in path %s\n", info.Name(), path)
+						log.Debug().Str("file", info.Name()).Str("path", path).Msg("found java file")
 						javaFilesMap[cleanPath] = true
 						javaFiles = append(javaFiles, cleanPath)
 					}
