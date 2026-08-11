@@ -1,31 +1,98 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 2
+
+# the go module is named `ojdmcollector`; pin the project name so archive and
+# checksum templates render the hyphenated, user-facing name
+project_name: ojdm-collector
+
+before:
+  hooks:
+    - go mod download
+    - go mod verify
 
 builds:
-  - env:
+  - id: default
+    env:
       - CGO_ENABLED=0
-      - GOOS=1.22
-    targets:
-      - linux_amd64
-      - linux_arm64
-      - darwin_arm64
-      - darwin_amd64
-      - windows_amd64
-      - windows_arm64
+    binary: ojdm-collector
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+      - -X main.builtBy=goreleaser
+    flags:
+      - -trimpath
 
 archives:
-  - format: tar.gz
-    # use zip for windows archives
+  - id: default
+    ids:
+      - default
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{- tolower .Os }}_{{- if eq .Arch "386" }}i386{{- else }}{{ .Arch }}{{ end }}{{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
+
 checksum:
-  name_template: "checksums.txt"
-snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - id: archive
+    artifacts: archive
+    # snapshot runs are dry-runs; don't emit SBOMs for throwaway builds
+    disable: "{{ .IsSnapshot }}"
+
+signs:
+  # keyless cosign signing via the workflow's OIDC token (id-token: write).
+  # cosign v3 signs into a Sigstore bundle; --output-signature/--output-certificate
+  # are ignored and an empty --bundle path is a hard error.
+  # signing checksums.txt transitively covers every artifact it lists.
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+# release-please owns CHANGELOG.md; goreleaser must not generate a competing one
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+  disable: true
+
+milestones:
+  - close: true
+    fail_on_error: false
+    name_template: "{{ .Tag }}"
+
+homebrew_casks:
+  - name: ojdm-collector
+    commit_msg_template: Brew cask update for {{ .ProjectName }} version {{ .Tag }}
+    description: Licenseware OJDM Collector - gather all Java/JDK info in one place.
+    homepage: https://licenseware.io
+    license: Apache-2.0
+    repository:
+      name: homebrew-tap
+      owner: licenseware
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ojdm-collector"]
+          end
