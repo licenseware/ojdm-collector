@@ -96,7 +96,6 @@ jobs:
   # Runs on every PR, not gated on paths: the release config breaks rarely but
   # breaks at exactly the moment you are trying to cut a release.
   snapshot:
-    name: release rehearsal
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
