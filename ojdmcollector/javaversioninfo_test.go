@@ -63,3 +63,32 @@ func TestGetToolPathAppendsWindowsSuffix(t *testing.T) {
 		t.Fatalf("getToolPath() = %q, want %q", got, want)
 	}
 }
+
+// One installation reachable through several search paths (a symlinked
+// /usr/bin/java plus the real location) must be reported once, keeping the
+// route that resolved the most detail.
+func TestIsRicherRecordPrefersTheMoreCompleteRoute(t *testing.T) {
+	withDLL := JavaInfoRunningProcs{JavaHome: "/usr/lib/jvm/jdk", DynLibBinPath: "/usr/lib/jvm/jdk/lib/server/libjvm.so"}
+	withoutDLL := JavaInfoRunningProcs{JavaHome: "/usr/lib/jvm/jdk"}
+	jdk := JavaInfoRunningProcs{JavaHome: "/usr/lib/jvm/jdk", IsJDK: true}
+	jre := JavaInfoRunningProcs{JavaHome: "/usr/lib/jvm/jdk"}
+
+	cases := []struct {
+		name                string
+		candidate, existing JavaInfoRunningProcs
+		want                bool
+	}{
+		{"resolved shared library wins", withDLL, withoutDLL, true},
+		{"unresolved shared library loses", withoutDLL, withDLL, false},
+		{"jdk beats jre when both resolve equally", jdk, jre, true},
+		{"identical records do not churn", withDLL, withDLL, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isRicherRecord(tc.candidate, tc.existing); got != tc.want {
+				t.Fatalf("isRicherRecord() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
