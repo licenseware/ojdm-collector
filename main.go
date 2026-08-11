@@ -10,15 +10,26 @@ import (
 	"strings"
 )
 
-func main() {
+// Stamped at build time by GoReleaser via -ldflags -X main.<name>=...
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+	builtBy = "unknown"
+)
 
-	fmt.Print("\n\nLicenseware OJDM Collector - Gather all java info in one place\n\n")
+func versionString() string {
+	return fmt.Sprintf("ojdm-collector %s (commit %s, built %s by %s)", version, commit, date, builtBy)
+}
+
+func main() {
 
 	csvReportPath := flag.String("output-path", "report.csv", "Optional: Path to csv report.")
 	searchPaths := flag.String("search-paths", "", "Optional: List of paths separated by comma where to search for java info.")
 	searchPathsFile := flag.String("search-paths-file", "", "Optional: Path to a file containing additional search paths, one path per line.")
 	logPath := flag.String("log-path", "", "Optional: Path to the debug log. Defaults to a logs/ directory beside the csv report.")
 	logLevel := flag.String("log-level", "info", "Optional: Console verbosity (debug, info, warn, error). The debug log always records everything.")
+	showVersion := flag.Bool("version", false, "Print the collector version and exit.")
 
 	flag.Usage = func() {
 		fmt.Println()
@@ -36,6 +47,13 @@ func main() {
 	}
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(versionString())
+		return
+	}
+
+	fmt.Print("\n\nLicenseware OJDM Collector - Gather all java info in one place\n\n")
 
 	if !strings.HasSuffix(*csvReportPath, ".csv") {
 		fmt.Println("Error: Invalid output report path. The report path must be a csv file.")
@@ -58,6 +76,8 @@ func main() {
 	log.Info().
 		Str("log_path", resolvedLogPath).
 		Str("csv_report_path", *csvReportPath).
+		Str("version", version).
+		Str("commit", commit).
 		Str("os", runtime.GOOS).
 		Str("arch", runtime.GOARCH).
 		Strs("args", os.Args[1:]).
