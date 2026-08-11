@@ -29,41 +29,54 @@ func getJavaSharedLibPaths(searchPaths []string) []string {
 	javaFilesMap := make(map[string]bool)
 	var javaFiles []string
 	for _, searchPath := range searchPaths {
-		filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				if os.IsPermission(err) {
-					return filepath.SkipDir
-				}
-				return err
-			}
-
-			if !info.IsDir() && isInTargetSubfolder(path) {
-				for _, javaSharedLibFilename := range javaSharedLibFilenames {
-					if info.Name() == javaSharedLibFilename {
-						cleanPath := processPath(path)
-						if _, exists := javaFilesMap[cleanPath]; !exists {
-							fmt.Printf("Found %s in path %s\n", info.Name(), path)
-							javaFilesMap[cleanPath] = true
-							javaFiles = append(javaFiles, cleanPath)
-						}
-					}
-				}
-			}
-
-			return nil
-		})
+		javaFiles = append(javaFiles, walkForJavaFiles(searchPath, javaSharedLibFilenames, javaFilesMap)...)
 	}
 
 	fmt.Printf("Finished gathering all java related paths!\n")
 	return javaFiles
 }
 
+func walkForJavaFiles(searchPath string, javaSharedLibFilenames []string, javaFilesMap map[string]bool) []string {
+	var javaFiles []string
+
+	filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			// Returning the error aborts the walk for this whole search root,
+			// silently dropping every installation that sorts after the failing
+			// entry. Broken junctions, cloud placeholders and files removed
+			// mid-scan by security agents all reach here, so skip and carry on.
+			fmt.Printf("Skipping %s: %v\n", path, err)
+			return nil
+		}
+
+		if !info.IsDir() && isInTargetSubfolder(path) {
+			for _, javaSharedLibFilename := range javaSharedLibFilenames {
+				if info.Name() == javaSharedLibFilename {
+					cleanPath := processPath(path)
+					if _, exists := javaFilesMap[cleanPath]; !exists {
+						fmt.Printf("Found %s in path %s\n", info.Name(), path)
+						javaFilesMap[cleanPath] = true
+						javaFiles = append(javaFiles, cleanPath)
+					}
+				}
+			}
+		}
+
+		return nil
+	})
+
+	return javaFiles
+}
+
 func processPath(path string) string {
 	normalizedPath := normalizeSearchPath(path)
-	if idx := strings.Index(normalizedPath, "/bin"); idx != -1 {
+	// The last separator wins: an installation under a root that itself
+	// contains "bin" (C:\bin-tools\jdk-21\bin\java.exe) would otherwise be
+	// truncated to the root, and every lookup below it then fails.
+	if idx := strings.LastIndex(normalizedPath, "/bin/"); idx != -1 {
 		return normalizedPath[:idx]
 	}
-	if idx := strings.Index(normalizedPath, "/lib/server"); idx != -1 {
+	if idx := strings.LastIndex(normalizedPath, "/lib/server/"); idx != -1 {
 		return normalizedPath[:idx]
 	}
 	return normalizedPath
