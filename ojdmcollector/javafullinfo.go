@@ -54,18 +54,19 @@ func CollectJavaInfo(searchPaths []string, log *zerolog.Logger) []JavaInfoRunnin
 // unscannedProcessHomes lists the java homes that running processes report and
 // the scan did not reach, deduplicated, so each is collected once.
 func unscannedProcessHomes(processInfo, versionInfo []JavaInfoRunningProcs) []string {
-	known := make(map[string]bool, len(versionInfo))
+	known := make(map[string]struct{}, len(versionInfo))
 	for _, info := range versionInfo {
-		known[normalizePath(info.JavaHome)] = true
+		known[normalizePath(info.JavaHome)] = struct{}{}
 	}
 
 	var missed []string
 	for _, info := range processInfo {
 		home := normalizePath(info.JavaHome)
-		if home == "" || known[home] {
+		_, seen := known[home]
+		if home == "" || seen {
 			continue
 		}
-		known[home] = true
+		known[home] = struct{}{}
 		missed = append(missed, home)
 	}
 
