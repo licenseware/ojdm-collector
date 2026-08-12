@@ -28,6 +28,17 @@ func CollectJavaInfo(searchPaths []string, log *zerolog.Logger) []JavaInfoRunnin
 	if toolFound != nil {
 		javaProcesses := GetJavaProcessInfo(toolFound.JavaHome, log)
 		javaInfos = append(javaInfos, javaProcesses...)
+
+		// A JVM can run from a location no search path reaches: an app bundle, a
+		// user directory, a container mount. The home it reports is an
+		// installation the scan missed, so collect it like any other, otherwise
+		// the row merges with nothing and carries no version, no IsJDK and no
+		// shared library.
+		if missed := unscannedProcessHomes(javaInfos, versionInfos); len(missed) > 0 {
+			log.Info().Strs("java_homes", missed).
+				Msg("collecting installations that only a running process revealed")
+			versionInfos = append(versionInfos, GetJavaVersionInfos(missed, log)...)
+		}
 	} else {
 		log.Warn().Msg("did not find the jinfo and jps binaries, running processes will not be identified")
 	}
@@ -38,6 +49,27 @@ func CollectJavaInfo(searchPaths []string, log *zerolog.Logger) []JavaInfoRunnin
 		Int("rows", len(mergedJavaInfo)).Msg("collection complete")
 
 	return mergedJavaInfo
+}
+
+// unscannedProcessHomes lists the java homes that running processes report and
+// the scan did not reach, deduplicated, so each is collected once.
+func unscannedProcessHomes(processInfo, versionInfo []JavaInfoRunningProcs) []string {
+	known := make(map[string]bool, len(versionInfo))
+	for _, info := range versionInfo {
+		known[normalizePath(info.JavaHome)] = true
+	}
+
+	var missed []string
+	for _, info := range processInfo {
+		home := normalizePath(info.JavaHome)
+		if home == "" || known[home] {
+			continue
+		}
+		known[home] = true
+		missed = append(missed, home)
+	}
+
+	return missed
 }
 
 func mergeSlices(processInfo, versionInfo []JavaInfoRunningProcs) []JavaInfoRunningProcs {
