@@ -1,10 +1,21 @@
 # Licenseware ODJM Collector
 
+[![ci](https://github.com/licenseware/ojdm-collector/actions/workflows/ci.yml/badge.svg)](https://github.com/licenseware/ojdm-collector/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/licenseware/ojdm-collector?logo=github)](https://github.com/licenseware/ojdm-collector/releases/latest)
+[![homebrew tap](https://img.shields.io/badge/homebrew-licenseware%2Ftap-FBB040?logo=homebrew&logoColor=white)](https://github.com/licenseware/homebrew-tap)
+[![go version](https://img.shields.io/github/go-mod/go-version/licenseware/ojdm-collector?logo=go)](go.mod)
+[![license](https://img.shields.io/github/license/licenseware/ojdm-collector)](LICENSE)
+[![downloads](https://img.shields.io/github/downloads/licenseware/ojdm-collector/total?logo=github)](https://github.com/licenseware/ojdm-collector/releases)
+[![issues](https://img.shields.io/github/issues/licenseware/ojdm-collector?logo=github)](https://github.com/licenseware/ojdm-collector/issues)
+[![last commit](https://img.shields.io/github/last-commit/licenseware/ojdm-collector?logo=git&logoColor=white)](https://github.com/licenseware/ojdm-collector/commits/main)
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
 - [How to download](#how-to-download)
+  - [Homebrew (macOS / Linux)](#homebrew-macos--linux)
+  - [Release assets](#release-assets)
 - [How to use](#how-to-use)
   - [Optional arguments](#optional-arguments)
 - [Collected data](#collected-data)
@@ -19,6 +30,15 @@
 This program is designed to search for Java installations on the machine where it's running, collect information about the machine and the Java installations and generate a CSV report. It uses the jinfo and jps binaries found in most Java JDKs to connect to the JVM and collect data on running processes. If the binaries are not found, only information on installed Java instances is collected. There is no dependency to a certain JDK vendor or version to run this program.
 
 ## How to download
+
+### Homebrew (macOS / Linux)
+
+    $ brew install licenseware/tap/ojdm-collector
+
+Upgrade later with `brew upgrade ojdm-collector`.
+
+### Release assets
+
 Go to `Releases` page on the right side bar
 ![Releases Page](docs/releases.png)
 
