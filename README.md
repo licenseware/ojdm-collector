@@ -39,14 +39,17 @@ Upgrade later with `brew upgrade ojdm-collector`.
 
 ### Release assets
 
-Go to `Releases` page on the right side bar
+Go to the [GitHub Release](https://github.com/licenseware/ojdm-collector/releases/latest) page on the right side bar
+
 ![Releases Page](docs/releases.png)
 
 Then using `Assets` select the right package for your operating system and cpu architecture,
 naming convention is `ojdm-collector-version_os_architecture`
 
 ![Assets](docs/assets.png)
+
 ## How to use
+
 On Windows:
 `ojdm-collector.exe`
 
