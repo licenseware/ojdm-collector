@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // Stamped at build time by GoReleaser via -ldflags -X main.<name>=...
@@ -23,6 +24,10 @@ func versionString() string {
 }
 
 func main() {
+
+	// One stamp for the whole run: the csv report, the log lines and the
+	// support hand-over all have to refer to the same instant.
+	runStartedAt := time.Now().UTC()
 
 	csvReportPath := flag.String("output-path", "report.csv", "Optional: Path to csv report.")
 	searchPaths := flag.String("search-paths", "", "Optional: List of paths separated by comma where to search for java info.")
@@ -72,7 +77,9 @@ func main() {
 	}
 	defer logFile.Close()
 
-	log := logging.New(*logLevel, true, logFile)
+	runLog := logging.New(*logLevel, true, logFile).With().
+		Time("run_started_at", runStartedAt).Logger()
+	log := &runLog
 	log.Info().
 		Str("log_path", resolvedLogPath).
 		Str("csv_report_path", *csvReportPath).
@@ -97,7 +104,9 @@ func main() {
 
 	javaInfoRunningProcs := ojdmc.CollectJavaInfo(trimSpaths, log)
 
-	if err := ojdmc.CreateCSVReport(*csvReportPath, javaInfoRunningProcs, log); err != nil {
+	reportMeta := ojdmc.ReportMeta{CollectedAt: runStartedAt, Version: version}
+
+	if err := ojdmc.CreateCSVReport(*csvReportPath, javaInfoRunningProcs, reportMeta, log); err != nil {
 		log.Error().Err(err).Str("path", *csvReportPath).Msg("could not write csv report")
 		return
 	}

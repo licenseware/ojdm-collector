@@ -52,16 +52,21 @@ func (m minLevelWriter) WriteLevel(level zerolog.Level, p []byte) (int, error) {
 // filtered to consoleLevel; any extra writers receive every event as raw JSON,
 // which is what the debug file and the support hand-over rely on.
 func New(consoleLevel string, isProd bool, extra ...io.Writer) *zerolog.Logger {
-	zerolog.TimeFieldFormat = time.RFC3339
+	// Timestamps are UTC everywhere: reports come from customer machines in
+	// arbitrary (and sometimes wrong) time zones, and support has to line them
+	// up with the csv report and with each other.
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	zerolog.TimestampFunc = func() time.Time { return time.Now().UTC() }
 	zerolog.CallerMarshalFunc = func(_ uintptr, file string, line int) string {
 		return filepath.Base(file) + ":" + strconv.Itoa(line)
 	}
 
 	console := minLevelWriter{
 		w: zerolog.ConsoleWriter{
-			Out:        os.Stderr,
-			TimeFormat: time.RFC3339,
-			NoColor:    isProd,
+			Out:          os.Stderr,
+			TimeFormat:   time.RFC3339Nano,
+			TimeLocation: time.UTC,
+			NoColor:      isProd,
 		},
 		level: parseLevel(consoleLevel),
 	}
