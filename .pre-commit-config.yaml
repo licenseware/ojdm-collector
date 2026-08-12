@@ -81,3 +81,8 @@ repos:
       - id: dockerfmt
         args:
           - --indent=4
+  - repo: https://github.com/thlorenz/doctoc
+    rev: v2.5.0
+    hooks:
+      - id: doctoc
+        files: ^README.md$

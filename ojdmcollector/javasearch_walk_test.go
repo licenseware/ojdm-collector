@@ -1,6 +1,8 @@
 package ojdmcollector
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -116,5 +118,43 @@ func TestWalkForJavaFilesContinuesAfterPermissionError(t *testing.T) {
 
 	if len(got) != 1 || got[0] != want {
 		t.Fatalf("walkForJavaFiles() = %v, want [%s]", got, want)
+	}
+}
+
+// The walk has no measurement today, so widening a platform's default roots is
+// guesswork. Each root reports what it cost.
+func TestWalkForJavaFilesReportsItsCost(t *testing.T) {
+	root := t.TempDir()
+	writeJavaBinary(t, root, "jdk-21")
+
+	var sink bytes.Buffer
+	log := zerolog.New(&sink)
+
+	walkForJavaFiles(root, getJavaSharedLibFileName(), map[string]bool{}, &log)
+
+	var found bool
+	for _, line := range strings.Split(strings.TrimSpace(sink.String()), "\n") {
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("log line is not json: %v", err)
+		}
+		if entry["message"] != "finished walking search path" {
+			continue
+		}
+		found = true
+
+		if entry["search_path"] != root {
+			t.Errorf("search_path = %v, want %q", entry["search_path"], root)
+		}
+		if entries, _ := entry["entries"].(float64); entries < 1 {
+			t.Errorf("entries = %v, want at least 1", entry["entries"])
+		}
+		if _, ok := entry["duration_ms"]; !ok {
+			t.Error("duration_ms missing")
+		}
+	}
+
+	if !found {
+		t.Fatalf("no completion entry in the log:\n%s", sink.String())
 	}
 }

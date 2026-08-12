@@ -2,6 +2,7 @@ package ojdmcollector
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 
@@ -19,8 +20,8 @@ func getSearchPaths(log *zerolog.Logger) []string {
 	switch runtime.GOOS {
 
 	case "darwin":
-		macPaths := []string{"/Applications"}
-		paths = append(paths, macPaths...)
+		homeDir, _ := os.UserHomeDir()
+		paths = append(paths, darwinSearchPaths(homeDir)...)
 		log.Debug().Str("platform", runtime.GOOS).Strs("paths", paths).Msg("default search paths")
 		return paths
 
@@ -84,4 +85,26 @@ func getSearchPaths(log *zerolog.Logger) []string {
 		log.Debug().Str("platform", runtime.GOOS).Msg("unknown platform, searching from the filesystem root")
 		return []string{"/"}
 	}
+}
+
+// darwinSearchPaths lists the roots a macOS installation can appear under.
+// /Library/Java/JavaVirtualMachines is the canonical one — /usr/libexec/java_home,
+// the Homebrew casks and the Temurin installer all target it — and searching
+// only /Applications is why a stock Mac used to report nothing.
+func darwinSearchPaths(homeDir string) []string {
+	paths := []string{
+		"/Library/Java/JavaVirtualMachines",
+		"/Applications",
+		"/usr/local",
+		"/opt", // includes /opt/homebrew, the arm64 prefix
+	}
+
+	// path.Join, not filepath.Join: these are macOS paths whatever host the
+	// tests compile on, and filepath.Join would separate them with a backslash
+	// when the unit tests run on the windows runner.
+	if homeDir != "" {
+		paths = append(paths, path.Join(homeDir, "Library", "Java"))
+	}
+
+	return paths
 }
