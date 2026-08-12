@@ -33,7 +33,7 @@ This program is designed to search for Java installations on the machine where i
 
 ### Homebrew (macOS / Linux)
 
-    $ brew install licenseware/tap/ojdm-collector
+    brew install licenseware/tap/ojdm-collector
 
 Upgrade later with `brew upgrade ojdm-collector`.
 
