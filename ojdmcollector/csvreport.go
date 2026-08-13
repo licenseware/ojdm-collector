@@ -5,13 +5,23 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/rs/zerolog"
 )
 
-func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs, log *zerolog.Logger) error {
+// ReportMeta describes the run that produced a report rather than any single
+// java installation, so every row carries the same values.
+type ReportMeta struct {
+	CollectedAt time.Time
+	Version     string
+}
 
-	log.Info().Str("path", csvPath).Msg("creating csv report")
+func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs, meta ReportMeta, log *zerolog.Logger) error {
+
+	collectedAt := meta.CollectedAt.UTC().Format(time.RFC3339)
+
+	log.Info().Str("path", csvPath).Str("collected_at", collectedAt).Msg("creating csv report")
 
 	file, err := os.Create(csvPath)
 	if err != nil {
@@ -23,6 +33,8 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs, log *z
 	defer writer.Flush()
 
 	header := []string{
+		"CollectedAtUTC",
+		"CollectorVersion",
 		"HostName",
 		"DynLibBinPath",
 		"JavaBinPath",
@@ -50,6 +62,8 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs, log *z
 	for _, value := range javaFullInfo {
 
 		stringData := []string{
+			collectedAt,
+			meta.Version,
 			value.HostName,
 			value.DynLibBinPath,
 			value.JavaBinPath,
