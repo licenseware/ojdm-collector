@@ -3,8 +3,8 @@
 
 version: 2
 
-# the go module is named `ojdmcollector`; pin the project name so archive and
-# checksum templates render the hyphenated, user-facing name
+# pin the project name so archive and checksum templates render the
+# hyphenated, user-facing name whatever the module path is
 project_name: ojdm-collector
 
 before:

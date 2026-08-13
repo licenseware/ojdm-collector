@@ -1,6 +1,10 @@
-package ojdmcollector
+// Package javainfo finds the java installations on a host, inspects each one
+// and reports the running JVM instances it can attribute to them.
+package javainfo
 
-type JavaInfoRunningProcs struct {
+// A Record describes one java installation, optionally carrying the details of
+// a JVM instance observed running out of it.
+type Record struct {
 	HostName              string
 	DynLibBinPath         string
 	JavaBinPath           string

@@ -1,4 +1,6 @@
-package ojdmcollector
+// Package report renders collected java installations into the deliverable
+// formats.
+package report
 
 import (
 	"encoding/csv"
@@ -8,16 +10,19 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/licenseware/ojdm-collector/internal/javainfo"
 )
 
-// ReportMeta describes the run that produced a report rather than any single
-// java installation, so every row carries the same values.
-type ReportMeta struct {
+// Meta describes the run that produced a report rather than any single java
+// installation, so every row carries the same values.
+type Meta struct {
 	CollectedAt time.Time
 	Version     string
 }
 
-func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs, meta ReportMeta, log *zerolog.Logger) error {
+// WriteCSV writes one row per record to csvPath, truncating any existing file.
+func WriteCSV(csvPath string, records []javainfo.Record, meta Meta, log *zerolog.Logger) error {
 
 	collectedAt := meta.CollectedAt.UTC().Format(time.RFC3339)
 
@@ -59,7 +64,7 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs, meta R
 		return fmt.Errorf("writing csv header: %w", err)
 	}
 
-	for _, value := range javaFullInfo {
+	for _, value := range records {
 
 		stringData := []string{
 			collectedAt,
@@ -89,7 +94,7 @@ func CreateCSVReport(csvPath string, javaFullInfo []JavaInfoRunningProcs, meta R
 		}
 	}
 
-	log.Info().Int("rows", len(javaFullInfo)).Msg("csv report written")
+	log.Info().Int("rows", len(records)).Msg("csv report written")
 
 	return nil
 }

@@ -1,4 +1,4 @@
-package ojdmcollector
+package javainfo
 
 import (
 	"os"
@@ -68,14 +68,14 @@ func TestGetToolPathAppendsWindowsSuffix(t *testing.T) {
 // /usr/bin/java plus the real location) must be reported once, keeping the
 // route that resolved the most detail.
 func TestIsRicherRecordPrefersTheMoreCompleteRoute(t *testing.T) {
-	withDLL := JavaInfoRunningProcs{JavaHome: "/usr/lib/jvm/jdk", DynLibBinPath: "/usr/lib/jvm/jdk/lib/server/libjvm.so"}
-	withoutDLL := JavaInfoRunningProcs{JavaHome: "/usr/lib/jvm/jdk"}
-	jdk := JavaInfoRunningProcs{JavaHome: "/usr/lib/jvm/jdk", IsJDK: true}
-	jre := JavaInfoRunningProcs{JavaHome: "/usr/lib/jvm/jdk"}
+	withDLL := Record{JavaHome: "/usr/lib/jvm/jdk", DynLibBinPath: "/usr/lib/jvm/jdk/lib/server/libjvm.so"}
+	withoutDLL := Record{JavaHome: "/usr/lib/jvm/jdk"}
+	jdk := Record{JavaHome: "/usr/lib/jvm/jdk", IsJDK: true}
+	jre := Record{JavaHome: "/usr/lib/jvm/jdk"}
 
 	cases := []struct {
 		name                string
-		candidate, existing JavaInfoRunningProcs
+		candidate, existing Record
 		want                bool
 	}{
 		{"resolved shared library wins", withDLL, withoutDLL, true},

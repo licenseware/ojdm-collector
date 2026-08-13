@@ -1,4 +1,4 @@
-package ojdmcollector
+package javainfo
 
 import (
 	"fmt"
@@ -99,8 +99,8 @@ func checkToolExists(javaBinPath, toolName string) bool {
 	return false
 }
 
-func parseJavaVersionOutput(output string) JavaInfoRunningProcs {
-	return JavaInfoRunningProcs{
+func recordFromVersionOutput(output string) Record {
+	return Record{
 		JavaHome:           normalizePath(findRegexInText(`java.home\s=\s(.*)`, output)),
 		JavaRuntimeName:    findRegexInText(`java.runtime.name\s=\s(.*)`, output),
 		JavaRuntimeVersion: findRegexInText(`java.runtime.version\s=\s(.*)`, output),
@@ -113,8 +113,8 @@ func parseJavaVersionOutput(output string) JavaInfoRunningProcs {
 	}
 }
 
-func GetJavaVersionInfos(javaBasePaths []string, log *zerolog.Logger) []JavaInfoRunningProcs {
-	var versionInfos []JavaInfoRunningProcs
+func inspect(javaBasePaths []string, log *zerolog.Logger) []Record {
+	var versionInfos []Record
 	indexByHome := make(map[string]int)
 	for _, basePath := range javaBasePaths {
 		javaBinPath, err := getJavaBinaryPath(basePath)
@@ -128,7 +128,7 @@ func GetJavaVersionInfos(javaBasePaths []string, log *zerolog.Logger) []JavaInfo
 				Msg("skipping installation, java binary could not be executed")
 			continue
 		}
-		info := parseJavaVersionOutput(output)
+		info := recordFromVersionOutput(output)
 		javaDllPath, err := getJavaDLLPath(basePath)
 		if err != nil && info.JavaHome != "" && normalizePath(basePath) != info.JavaHome {
 			// A java binary reached through a symlink (/usr/bin/java) yields a
@@ -184,7 +184,7 @@ func GetJavaVersionInfos(javaBasePaths []string, log *zerolog.Logger) []JavaInfo
 // isRicherRecord reports whether candidate describes an installation more
 // completely than existing, deciding which route to keep for a java home that
 // was reached more than once.
-func isRicherRecord(candidate, existing JavaInfoRunningProcs) bool {
+func isRicherRecord(candidate, existing Record) bool {
 	if (candidate.DynLibBinPath != "") != (existing.DynLibBinPath != "") {
 		return candidate.DynLibBinPath != ""
 	}
