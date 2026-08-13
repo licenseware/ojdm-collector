@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.1.1](https://github.com/licenseware/ojdm-collector/compare/v1.1.0...v1.1.1) (2026-08-13)
+
+
+### Features
+
+* **CI:** add macOS acceptance job and update readme ([#28](https://github.com/licenseware/ojdm-collector/issues/28)) ([c188880](https://github.com/licenseware/ojdm-collector/commit/c18888030f7bbb34797700b1e0f3640b12a4e5a3))
+* timestamp report and logs ([#30](https://github.com/licenseware/ojdm-collector/issues/30)) ([9e70a90](https://github.com/licenseware/ojdm-collector/commit/9e70a90c6b267ccf9ed8c951af526396e69d5fe5))
+
+
+### Bug Fixes
+
+* **docs:** remove bash sign from snippet ([5109eb3](https://github.com/licenseware/ojdm-collector/commit/5109eb38f0806abe3b23b2cf7906bc29d59638ce))
+
+
+### Build & Dependencies
+
+* **deps:** update actions/attest-build-provenance digest to 4d10147 ([#27](https://github.com/licenseware/ojdm-collector/issues/27)) ([a89ad8b](https://github.com/licenseware/ojdm-collector/commit/a89ad8b07d4297cdd8fb3237f1d0c7f8f6b4b35c))
+
+
+### Chores
+
+* restructure packages into internal ([#32](https://github.com/licenseware/ojdm-collector/issues/32)) ([b518b40](https://github.com/licenseware/ojdm-collector/commit/b518b40242489977f0bed8d03e55a829e32c5404))
+
 ## [1.1.0](https://github.com/licenseware/ojdm-collector/compare/v1.0.1...v1.1.0) (2026-08-11)
 
 
