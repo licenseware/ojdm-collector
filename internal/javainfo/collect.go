@@ -1,4 +1,4 @@
-package ojdmcollector
+package javainfo
 
 import (
 	"sort"
@@ -6,18 +6,21 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func CollectJavaInfo(searchPaths []string, log *zerolog.Logger) []JavaInfoRunningProcs {
+// Collect scans searchPaths plus the platform defaults for java installations
+// and merges each one with the running JVM instances that report it as their
+// home.
+func Collect(searchPaths []string, log *zerolog.Logger) []Record {
 
-	var javaInfos []JavaInfoRunningProcs
-	var versionInfos []JavaInfoRunningProcs
+	var javaInfos []Record
+	var versionInfos []Record
 	javaBasePAths := getJavaSharedLibPaths(searchPaths, log)
 
-	versionInfos = GetJavaVersionInfos(javaBasePAths, log)
+	versionInfos = inspect(javaBasePAths, log)
 	sort.Slice(versionInfos, func(i, j int) bool {
 		return versionInfos[i].JavaVersion > versionInfos[j].JavaVersion
 	})
 
-	var toolFound *JavaInfoRunningProcs
+	var toolFound *Record
 	for _, info := range versionInfos {
 		if info.JpsJinfoPresent {
 			toolFound = &info
@@ -26,7 +29,7 @@ func CollectJavaInfo(searchPaths []string, log *zerolog.Logger) []JavaInfoRunnin
 	}
 
 	if toolFound != nil {
-		javaProcesses := GetJavaProcessInfo(toolFound.JavaHome, log)
+		javaProcesses := runningProcesses(toolFound.JavaHome, log)
 		javaInfos = append(javaInfos, javaProcesses...)
 
 		// A JVM can run from a location no search path reaches: an app bundle, a
@@ -37,7 +40,7 @@ func CollectJavaInfo(searchPaths []string, log *zerolog.Logger) []JavaInfoRunnin
 		if missed := unscannedProcessHomes(javaInfos, versionInfos); len(missed) > 0 {
 			log.Info().Strs("java_homes", missed).
 				Msg("collecting installations that only a running process revealed")
-			versionInfos = append(versionInfos, GetJavaVersionInfos(missed, log)...)
+			versionInfos = append(versionInfos, inspect(missed, log)...)
 		}
 	} else {
 		log.Warn().Msg("did not find the jinfo and jps binaries, running processes will not be identified")
@@ -53,7 +56,7 @@ func CollectJavaInfo(searchPaths []string, log *zerolog.Logger) []JavaInfoRunnin
 
 // unscannedProcessHomes lists the java homes that running processes report and
 // the scan did not reach, deduplicated, so each is collected once.
-func unscannedProcessHomes(processInfo, versionInfo []JavaInfoRunningProcs) []string {
+func unscannedProcessHomes(processInfo, versionInfo []Record) []string {
 	known := make(map[string]struct{}, len(versionInfo))
 	for _, info := range versionInfo {
 		known[normalizePath(info.JavaHome)] = struct{}{}
@@ -73,9 +76,9 @@ func unscannedProcessHomes(processInfo, versionInfo []JavaInfoRunningProcs) []st
 	return missed
 }
 
-func mergeSlices(processInfo, versionInfo []JavaInfoRunningProcs) []JavaInfoRunningProcs {
-	mergedSlice := make([]JavaInfoRunningProcs, 0)
-	versionMap := make(map[string]*JavaInfoRunningProcs)
+func mergeSlices(processInfo, versionInfo []Record) []Record {
+	mergedSlice := make([]Record, 0)
+	versionMap := make(map[string]*Record)
 	processMap := make(map[string]bool)
 
 	// Create a map from versionInfo

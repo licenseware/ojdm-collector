@@ -1,4 +1,4 @@
-module ojdmcollector
+module github.com/licenseware/ojdm-collector
 
 go 1.26
 

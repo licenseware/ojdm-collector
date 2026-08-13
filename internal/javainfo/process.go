@@ -1,4 +1,4 @@
-package ojdmcollector
+package javainfo
 
 import (
 	"os/exec"
@@ -9,13 +9,13 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type JavaProcess struct {
+type process struct {
 	ProcessID   string
 	CommandLine string
 }
 
-func parseJpsOutput(output string) []JavaProcess {
-	var processes []JavaProcess
+func parseJpsOutput(output string) []process {
+	var processes []process
 	lines := strings.Split(output, "\n")
 
 	for _, line := range lines {
@@ -25,18 +25,17 @@ func parseJpsOutput(output string) []JavaProcess {
 
 		fields := strings.Fields(line)
 		if len(fields) > 0 {
-			process := JavaProcess{
+			processes = append(processes, process{
 				ProcessID:   fields[0],
 				CommandLine: strings.Join(fields[1:], " "),
-			}
-			processes = append(processes, process)
+			})
 		}
 	}
 
 	return processes
 }
 
-func runJps(javaHome string) ([]JavaProcess, error) {
+func runJps(javaHome string) ([]process, error) {
 	jpsPath := filepath.Join(javaHome, "bin", "jps")
 	if runtime.GOOS == "windows" {
 		jpsPath += ".exe"
@@ -52,13 +51,13 @@ func runJps(javaHome string) ([]JavaProcess, error) {
 	return processes, nil
 }
 
-func runJinfo(javaHome string, javaProcess JavaProcess) (string, error) {
+func runJinfo(javaHome string, proc process) (string, error) {
 	jinfoPath := filepath.Join(javaHome, "bin", "jinfo")
 	if runtime.GOOS == "windows" {
 		jinfoPath += ".exe"
 	}
 
-	cmd := exec.Command(jinfoPath, "-sysprops", javaProcess.ProcessID)
+	cmd := exec.Command(jinfoPath, "-sysprops", proc.ProcessID)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
@@ -67,13 +66,13 @@ func runJinfo(javaHome string, javaProcess JavaProcess) (string, error) {
 	return string(output), nil
 }
 
-func updateJavaInfoWithJinfoData(jinfoOutput string, javaProcess JavaProcess) JavaInfoRunningProcs {
+func recordFromJinfo(jinfoOutput string, proc process) Record {
 	// Update JavaInfo with data extracted from jinfoOutput
-	var javaInfo JavaInfoRunningProcs
+	var javaInfo Record
 
 	javaInfo.HostName = getHostName()
 	javaInfo.ProcessPath = normalizePath(findRegexInText(`(?m)^user.dir=(.*)`, jinfoOutput))
-	javaInfo.CommandLine = javaProcess.CommandLine
+	javaInfo.CommandLine = proc.CommandLine
 	javaInfo.JavaHome = normalizePath(findRegexInText(`java.home=(.*)`, jinfoOutput))
 	javaInfo.JavaRuntimeName = findRegexInText(`java.runtime.name=(.*)`, jinfoOutput)
 	javaInfo.JavaRuntimeVersion = findRegexInText(`java.runtime.version\s=\s(.*)`, jinfoOutput)
@@ -88,8 +87,8 @@ func updateJavaInfoWithJinfoData(jinfoOutput string, javaProcess JavaProcess) Ja
 	return javaInfo
 }
 
-func GetJavaProcessInfo(javaHome string, log *zerolog.Logger) []JavaInfoRunningProcs {
-	var runningProcsJavaInfos []JavaInfoRunningProcs
+func runningProcesses(javaHome string, log *zerolog.Logger) []Record {
+	var runningProcsJavaInfos []Record
 
 	jpsOutput, err := runJps(javaHome)
 	if err != nil {
@@ -99,13 +98,13 @@ func GetJavaProcessInfo(javaHome string, log *zerolog.Logger) []JavaInfoRunningP
 	}
 
 	log.Debug().Int("count", len(jpsOutput)).Msg("jps reported running jvm instances")
-	for _, process := range jpsOutput {
-		jinfoOutput, err := runJinfo(javaHome, process)
+	for _, proc := range jpsOutput {
+		jinfoOutput, err := runJinfo(javaHome, proc)
 		if err != nil {
-			log.Warn().Err(err).Str("pid", process.ProcessID).Msg("could not inspect running jvm with jinfo")
+			log.Warn().Err(err).Str("pid", proc.ProcessID).Msg("could not inspect running jvm with jinfo")
 			continue
 		}
-		parsedJInfo := updateJavaInfoWithJinfoData(jinfoOutput, process)
+		parsedJInfo := recordFromJinfo(jinfoOutput, proc)
 		runningProcsJavaInfos = append(runningProcsJavaInfos, parsedJInfo)
 	}
 

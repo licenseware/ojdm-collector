@@ -1,4 +1,4 @@
-package ojdmcollector
+package javainfo
 
 import (
 	"strings"

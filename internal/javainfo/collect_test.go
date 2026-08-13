@@ -1,4 +1,4 @@
-package ojdmcollector
+package javainfo
 
 import "testing"
 
@@ -7,11 +7,11 @@ import "testing"
 // IsJDK and no shared library. Its own java.home is an installation the scan
 // missed, and has to be collected like any other.
 func TestUnscannedProcessHomesFindsWhatTheScanMissed(t *testing.T) {
-	processInfo := []JavaInfoRunningProcs{
+	processInfo := []Record{
 		{JavaHome: "/opt/jdk-21"},
 		{JavaHome: "/Users/runner/hostedtoolcache/jdk-25/Contents/Home"},
 	}
-	versionInfo := []JavaInfoRunningProcs{
+	versionInfo := []Record{
 		{JavaHome: "/opt/jdk-21"},
 	}
 
@@ -26,7 +26,7 @@ func TestUnscannedProcessHomesFindsWhatTheScanMissed(t *testing.T) {
 // Two processes out of the same installation must not make the collector run
 // the java binary twice.
 func TestUnscannedProcessHomesDeduplicates(t *testing.T) {
-	processInfo := []JavaInfoRunningProcs{
+	processInfo := []Record{
 		{JavaHome: "/opt/jdk-21"},
 		{JavaHome: "/opt/jdk-21"},
 	}
@@ -39,7 +39,7 @@ func TestUnscannedProcessHomesDeduplicates(t *testing.T) {
 // A process jinfo could not describe has no home to collect, and an empty base
 // path would be walked as the working directory.
 func TestUnscannedProcessHomesSkipsEmptyHomes(t *testing.T) {
-	processInfo := []JavaInfoRunningProcs{{JavaHome: ""}}
+	processInfo := []Record{{JavaHome: ""}}
 
 	if got := unscannedProcessHomes(processInfo, nil); len(got) != 0 {
 		t.Fatalf("unscannedProcessHomes() = %v, want none", got)
@@ -49,8 +49,8 @@ func TestUnscannedProcessHomesSkipsEmptyHomes(t *testing.T) {
 // The scan and jinfo can spell the same installation differently, and a
 // spelling difference must not present it as a second installation.
 func TestUnscannedProcessHomesMatchesOnNormalisedPaths(t *testing.T) {
-	processInfo := []JavaInfoRunningProcs{{JavaHome: `C:\Program Files\Java\jdk-21`}}
-	versionInfo := []JavaInfoRunningProcs{{JavaHome: "C:/Program Files/Java/jdk-21"}}
+	processInfo := []Record{{JavaHome: `C:\Program Files\Java\jdk-21`}}
+	versionInfo := []Record{{JavaHome: "C:/Program Files/Java/jdk-21"}}
 
 	if got := unscannedProcessHomes(processInfo, versionInfo); len(got) != 0 {
 		t.Fatalf("unscannedProcessHomes() = %v, want none", got)
